@@ -7,7 +7,7 @@ on:
     branches:
       - main  # o la rama en la que estás trabajando
   schedule:
-    - cron: "0 22 * * *"
+    - cron: "36 23 * * *"
 
 jobs:
   descargar-archivo:
