@@ -2,10 +2,9 @@ name: Descargar archivo diariamente
 
 # Ejecutar el flujo de trabajo diariamente a las 22:00 UTC
 on:
-  on:
   push:
     branches:
-      - main  # o la rama en la que estás trabajando
+      - main  # O la rama que estés utilizando
   schedule:
     - cron: "0 22 * * *"
 
