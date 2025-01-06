@@ -1,0 +1,36 @@
+name: Descargar archivo diariamente
+
+# Ejecutar el flujo de trabajo diariamente a las 22:00 UTC
+on:
+  on:
+  push:
+    branches:
+      - main  # o la rama en la que estás trabajando
+  schedule:
+    - cron: "0 22 * * *"
+
+jobs:
+  descargar-archivo:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Clonar el repositorio
+    - name: Clonar el repositorio
+      uses: actions/checkout@v3
+
+    # 2. Configurar Python
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'  # Asegúrate de usar una versión compatible
+
+    # 3. Instalar las dependencias
+    - name: Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install schedule requests
+
+    # 4. Ejecutar el programa
+    - name: Ejecutar programa
+      run: |
+        python PVPC-precio-luz/Descarga-REE.py
