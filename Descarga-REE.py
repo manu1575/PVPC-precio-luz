@@ -41,7 +41,7 @@ def descargar_archivo():
         print(f"Error al descargar el archivo. Código de estado: {response.status_code}")
 
 # Programar la tarea diaria a las 22:00 horas
-schedule.every().day.at("22:36").do(descargar_archivo)
+schedule.every().day.at("23:45").do(descargar_archivo)
 
 print("Tarea programada para las 22:00 horas cada día.")
 
