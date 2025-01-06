@@ -2,6 +2,10 @@ name: Descargar archivo diariamente
 
 # Ejecutar el flujo de trabajo diariamente a las 22:00 UTC
 on:
+  on:
+  push:
+    branches:
+      - main  # o la rama en la que estás trabajando
   schedule:
     - cron: "0 22 * * *"
 
@@ -29,5 +33,5 @@ jobs:
     # 4. Ejecutar el programa
     - name: Ejecutar programa
       run: |
-        python Descarga-REE.py
+        python PVPC-precio-luz/Descarga-REE.py
 
