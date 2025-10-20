@@ -2,7 +2,7 @@ name: PVPC Diario - Descarga, PDF y Email
 
 on:
   schedule:
-    - cron: "04 23 * * *"  # Ejecutar todos los días a las 23:35 UTC
+    - cron: "07 23 * * *"  # Ejecutar todos los días a las 23:35 UTC
   push:
     branches:
       - main
@@ -15,33 +15,37 @@ jobs:
     # 1. Clonar repositorio
     - uses: actions/checkout@v3
 
-    # 2. Instalar dependencias
-    - name: Instalar dependencias
+    # 2. Instalar dependencias Python
+    - name: Instalar dependencias Python
       run: |
         python -m pip install --upgrade pip
         pip install requests pandas openpyxl xlrd pdfkit
 
-    # 3. Crear carpeta downloads
+    # 3. Instalar wkhtmltopdf
+    - name: Instalar wkhtmltopdf
+      run: sudo apt-get update && sudo apt-get install -y wkhtmltopdf
+
+    # 4. Crear carpeta downloads
     - name: Crear carpeta downloads
       run: mkdir -p downloads
 
-    # 4. Descargar archivo .xls
+    # 5. Descargar archivo .xls
     - name: Descargar archivo .xls
       run: python ./Descarga-REE.py
 
-    # 5. Convertir .xls a .xlsx
+    # 6. Convertir .xls a .xlsx
     - name: Convertir a .xlsx
       run: python ./convertir_xls_a_xlsx.py
 
-    # 6. Procesar datos
+    # 7. Procesar datos
     - name: Procesar datos
       run: python ./procesar_datos.py
 
-    # 7. Generar PDF
+    # 8. Generar PDF
     - name: Generar PDF
       run: python ./generar_pdf.py
 
-    # 8. Subir PDF al repositorio (opcional)
+    # 9. Subir PDF al repositorio (opcional)
     - name: Subir PDF
       run: |
         git config user.name "github-actions[bot]"
@@ -52,7 +56,7 @@ jobs:
         git commit -m "PDF generado automáticamente $(date +'%Y%m%d')" || echo "No hay cambios para subir"
         git push origin main
 
-    # 9. Enviar PDF por email
+    # 10. Enviar PDF por email
     - name: Enviar PDF por email
       env:
         EMAIL_USER: ${{ secrets.EMAIL_USER }}
@@ -62,11 +66,9 @@ jobs:
         SMTP_PORT: ${{ secrets.SMTP_PORT }}
       run: python ./enviar_email.py
 
-    # 10. Limpiar archivos temporales
+    # 11. Limpiar archivos temporales
     - name: Limpiar archivos temporales
       run: |
         rm -f downloads/*.xls
         rm -f downloads/*.xlsx
         rm -f output.pdf
-
-
