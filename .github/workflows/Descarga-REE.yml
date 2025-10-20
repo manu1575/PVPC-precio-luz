@@ -1,55 +1,76 @@
-name: Descargar, procesar y enviar archivo
+name: Procesar PVPC y enviar PDF automáticamente
 
 on:
   schedule:
-    - cron: "21 22 * * *"  # Se ejecuta todos los días a las 22:00 UTC
+    - cron: "26 22 * * *"  # Ejecutar todos los días a las 23:35 UTC
   push:
     branches:
       - main
 
 jobs:
-  procesar-archivo:
+  procesar_archivo:
     runs-on: ubuntu-latest
 
     steps:
     # 1. Clonar el repositorio
     - name: Clonar repositorio
       uses: actions/checkout@v3
+      with:
+        persist-credentials: true
 
-    # 2. Instalar dependencias
+    # 2. Instalar dependencias necesarias
     - name: Instalar dependencias
       run: |
         python -m pip install --upgrade pip
-        pip install requests openpyxl pdfkit  # smtplib no se instala
+        pip install requests openpyxl pdfkit pandas
 
-    # 3. Descargar el archivo .xls
+    # 3. Descargar archivo .xls
     - name: Descargar archivo .xls
-      run: |
-        python ./Descarga-REE.py  # Ejecuta tu script de descarga
+      run: python ./scripts/Descarga-REE.py
 
-    # 4. Convertir archivo .xls a .xlsx
+    # 4. Convertir .xls a .xlsx
     - name: Convertir .xls a .xlsx
-      run: |
-        python ./convertir_xls_a_xlsx.py  # Usar un script para convertir el archivo .xls a .xlsx
+      run: python ./scripts/convertir_xls_a_xlsx.py
 
-    # 5. Procesar datos y pegarlos en otro archivo .xlsx
-    - name: Procesar datos y pegar en otro archivo
-      run: |
-        python ./procesar_datos.py  # Usar un script que procese los datos y los pegue en otro archivo .xlsx
+    # 5. Procesar datos
+    - name: Procesar datos
+      run: python ./scripts/procesar_datos.py
 
-    # 6. Generar archivo .pdf desde el archivo .xlsx
-    - name: Generar archivo .pdf
-      run: |
-        python ./generar_pdf.py  # Usar un script para generar el PDF desde el archivo .xlsx
+    # 6. Generar PDF
+    - name: Generar PDF
+      run: python ./scripts/generar_pdf.py
 
-    # 7. Enviar el archivo .pdf por correo electrónico
-    - name: Enviar email con archivo .pdf
-      run: |
-        python ./enviar_email.py  # Usar un script para enviar el archivo por correo
+    # 7. Crear carpeta 'outputs' si no existe
+    - name: Crear carpeta outputs
+      run: mkdir -p outputs
 
-    # 8. Eliminar archivos temporales
-    - name: Eliminar archivos temporales
+    # 8. Mover el PDF final a outputs con fecha
+    - name: Mover PDF final
+      run: mv output.pdf outputs/output-$(date +'%Y%m%d').pdf
+
+    # 9. Subir PDF al repositorio
+    - name: Subir PDF al repositorio
       run: |
-        rm -f /path/to/your/temp/files/*.xls
-        rm -f /path/to/your/temp/files/*.xlsx
-        rm -f /path/to/your/temp/files/*.pdf
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add outputs/
+        git commit -m "Añadir PDF generado automáticamente"
+        git push origin main || echo "No hay cambios para subir"
+
+    # 10. Enviar PDF por email usando secretos
+    - name: Enviar PDF por email
+      env:
+        EMAIL_USER: ${{ secrets.EMAIL_USER }}
+        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+        SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      run: |
+        python ./scripts/enviar_email.py
+
+    # 11. Limpiar archivos temporales
+    - name: Limpiar archivos temporales
+      run: |
+        rm -f *.xls
+        rm -f *.xlsx
+        rm -f output.pdf
