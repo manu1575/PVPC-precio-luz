@@ -2,7 +2,7 @@ name: Procesar PVPC y enviar PDF automáticamente
 
 on:
   schedule:
-    - cron: "35 22 * * *"  # Ejecutar todos los días a las 23:35 UTC
+    - cron: "42 22 * * *"  # Ejecutar todos los días a las 23:35 UTC
   push:
     branches:
       - main
@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 0. Paso de debug: listar archivos y carpetas
-    - name: Listar archivos del repositorio
+    # 0. Paso de debug: listar archivos en la raíz
+    - name: Listar archivos en la raíz
       run: ls -R
 
     # 1. Clonar el repositorio
@@ -30,19 +30,19 @@ jobs:
 
     # 3. Descargar archivo .xls
     - name: Descargar archivo .xls
-      run: python ./scripts/Descarga-REE.py
+      run: python ./Descarga-REE.py
 
     # 4. Convertir .xls a .xlsx
     - name: Convertir .xls a .xlsx
-      run: python ./scripts/convertir_xls_a_xlsx.py
+      run: python ./convertir_xls_a_xlsx.py
 
     # 5. Procesar datos
     - name: Procesar datos
-      run: python ./scripts/procesar_datos.py
+      run: python ./procesar_datos.py
 
     # 6. Generar PDF
     - name: Generar PDF
-      run: python ./scripts/generar_pdf.py
+      run: python ./generar_pdf.py
 
     # 7. Crear carpeta 'outputs' si no existe
     - name: Crear carpeta outputs
@@ -69,7 +69,7 @@ jobs:
         EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
         SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
         SMTP_PORT: ${{ secrets.SMTP_PORT }}
-      run: python ./scripts/enviar_email.py
+      run: python ./enviar_email.py
 
     # 11. Limpiar archivos temporales
     - name: Limpiar archivos temporales
@@ -77,3 +77,4 @@ jobs:
         rm -f *.xls
         rm -f *.xlsx
         rm -f output.pdf
+
