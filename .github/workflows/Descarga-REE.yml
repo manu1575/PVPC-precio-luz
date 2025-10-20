@@ -2,7 +2,7 @@ name: Procesar PVPC y enviar PDF automáticamente
 
 on:
   schedule:
-    - cron: "26 22 * * *"  # Ejecutar todos los días a las 23:35 UTC
+    - cron: "35 22 * * *"  # Ejecutar todos los días a las 23:35 UTC
   push:
     branches:
       - main
@@ -12,6 +12,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # 0. Paso de debug: listar archivos y carpetas
+    - name: Listar archivos del repositorio
+      run: ls -R
+
     # 1. Clonar el repositorio
     - name: Clonar repositorio
       uses: actions/checkout@v3
@@ -65,8 +69,7 @@ jobs:
         EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
         SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
         SMTP_PORT: ${{ secrets.SMTP_PORT }}
-      run: |
-        python ./scripts/enviar_email.py
+      run: python ./scripts/enviar_email.py
 
     # 11. Limpiar archivos temporales
     - name: Limpiar archivos temporales
