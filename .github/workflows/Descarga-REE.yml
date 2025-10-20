@@ -1,78 +1,58 @@
-name: Procesar PVPC con PDF y log
+name: PVPC Diario - Descarga, PDF y Email
 
 on:
   schedule:
-    - cron: "53 22 * * *"  # Ejecutar todos los días a las 23:35 UTC
+    - cron: "04 23 * * *"  # Ejecutar todos los días a las 23:35 UTC
   push:
     branches:
       - main
 
 jobs:
-  procesar_archivo:
+  ejecutar_flujo:
     runs-on: ubuntu-latest
 
     steps:
-    # 0. Debug: listar archivos
-    - name: Listar archivos y carpetas
-      run: ls -R
-
     # 1. Clonar repositorio
-    - name: Clonar repositorio
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
     # 2. Instalar dependencias
     - name: Instalar dependencias
       run: |
         python -m pip install --upgrade pip
-        pip install requests openpyxl pdfkit pandas
+        pip install requests pandas openpyxl xlrd pdfkit
 
-    # 3. Crear carpetas necesarias
-    - name: Crear carpetas
-      run: |
-        mkdir -p downloads
-        mkdir -p outputs/logs
+    # 3. Crear carpeta downloads
+    - name: Crear carpeta downloads
+      run: mkdir -p downloads
 
-    # 4. Crear log de ejecución
-    - name: Crear archivo de log
-      run: echo "Inicio del workflow $(date)" > outputs/logs/log-$(date +'%Y%m%d').txt
-
-    # 5. Descargar archivo .xls
+    # 4. Descargar archivo .xls
     - name: Descargar archivo .xls
-      run: |
-        python ./Descarga-REE.py >> outputs/logs/log-$(date +'%Y%m%d').txt 2>&1
+      run: python ./Descarga-REE.py
 
-    # 6. Convertir .xls a .xlsx
-    - name: Convertir .xls a .xlsx
-      run: |
-        python ./convertir_xls_a_xlsx.py >> outputs/logs/log-$(date +'%Y%m%d').txt 2>&1
+    # 5. Convertir .xls a .xlsx
+    - name: Convertir a .xlsx
+      run: python ./convertir_xls_a_xlsx.py
 
-    # 7. Procesar datos
+    # 6. Procesar datos
     - name: Procesar datos
-      run: |
-        python ./procesar_datos.py >> outputs/logs/log-$(date +'%Y%m%d').txt 2>&1
+      run: python ./procesar_datos.py
 
-    # 8. Generar PDF
+    # 7. Generar PDF
     - name: Generar PDF
-      run: |
-        python ./generar_pdf.py >> outputs/logs/log-$(date +'%Y%m%d').txt 2>&1
+      run: python ./generar_pdf.py
 
-    # 9. Guardar PDF con fecha
-    - name: Mover PDF final
-      run: |
-        mkdir -p outputs
-        mv output.pdf outputs/output-$(date +'%Y%m%d').pdf
-        echo "PDF generado correctamente" >> outputs/logs/log-$(date +'%Y%m%d').txt
-
-    # 10. Subir PDF y log al repositorio
-    - name: Subir PDF y log
+    # 8. Subir PDF al repositorio (opcional)
+    - name: Subir PDF
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
+        mkdir -p outputs
+        mv output.pdf outputs/output-$(date +'%Y%m%d').pdf
         git add outputs/
-        git commit -m "Añadir PDF y log del $(date +'%Y%m%d')" || echo "No hay cambios para subir"
+        git commit -m "PDF generado automáticamente $(date +'%Y%m%d')" || echo "No hay cambios para subir"
         git push origin main
 
-    # 11. Enviar PDF por email
+    # 9. Enviar PDF por email
     - name: Enviar PDF por email
       env:
         EMAIL_USER: ${{ secrets.EMAIL_USER }}
@@ -80,14 +60,13 @@ jobs:
         EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
         SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
         SMTP_PORT: ${{ secrets.SMTP_PORT }}
-      run: |
-        python ./enviar_email.py >> outputs/logs/log-$(date +'%Y%m%d').txt 2>&1
+      run: python ./enviar_email.py
 
-    # 12. Limpiar archivos temporales
+    # 10. Limpiar archivos temporales
     - name: Limpiar archivos temporales
       run: |
         rm -f downloads/*.xls
         rm -f downloads/*.xlsx
         rm -f output.pdf
-        echo "Archivos temporales eliminados" >> outputs/logs/log-$(date +'%Y%m%d').txt
+
 
