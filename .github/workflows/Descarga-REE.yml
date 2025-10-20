@@ -1,36 +1,55 @@
-name: Descargar archivo diariamente
-
-# Ejecutar el flujo de trabajo diariamente a las 22:00 UTC
+name: Descargar, procesar y enviar archivo
 
 on:
+  schedule:
+    - cron: "15 23 * * *"  # Se ejecuta todos los días a las 22:00 UTC
   push:
     branches:
-      - main  # o la rama en la que estás trabajando
-  schedule:
-    - cron: "44 23 * * *"
+      - main
 
 jobs:
-  descargar-archivo:
+  procesar-archivo:
     runs-on: ubuntu-latest
 
     steps:
     # 1. Clonar el repositorio
-    - name: Clonar el repositorio
+    - name: Clonar repositorio
       uses: actions/checkout@v3
 
-    # 2. Configurar Python
-    - name: Configurar Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'  # Asegúrate de usar una versión compatible
-
-    # 3. Instalar las dependencias
+    # 2. Instalar dependencias
     - name: Instalar dependencias
       run: |
         python -m pip install --upgrade pip
-        pip install schedule requests
+        pip install requests openpyxl smtplib pdfkit
 
-    # 4. Ejecutar el programa
-    - name: Ejecutar programa
+    # 3. Descargar el archivo .xls
+    - name: Descargar archivo .xls
       run: |
-        python Descarga-REE.py
+        python ./Descarga-REE.py  # Ejecuta tu script de descarga
+
+    # 4. Convertir archivo .xls a .xlsx
+    - name: Convertir .xls a .xlsx
+      run: |
+        python ./convertir_xls_a_xlsx.py  # Usar un script para convertir el archivo .xls a .xlsx
+
+    # 5. Procesar datos y pegarlos en otro archivo .xlsx
+    - name: Procesar datos y pegar en otro archivo
+      run: |
+        python ./procesar_datos.py  # Usar un script que procese los datos y los pegue en otro archivo .xlsx
+
+    # 6. Generar archivo .pdf desde el archivo .xlsx
+    - name: Generar archivo .pdf
+      run: |
+        python ./generar_pdf.py  # Usar un script para generar el PDF desde el archivo .xlsx
+
+    # 7. Enviar el archivo .pdf por correo electrónico
+    - name: Enviar email con archivo .pdf
+      run: |
+        python ./enviar_email.py  # Usar un script para enviar el archivo por correo
+
+    # 8. Eliminar archivos temporales
+    - name: Eliminar archivos temporales
+      run: |
+        rm -f /path/to/your/temp/files/*.xls
+        rm -f /path/to/your/temp/files/*.xlsx
+        rm -f /path/to/your/temp/files/*.pdf
