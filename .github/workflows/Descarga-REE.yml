@@ -2,7 +2,7 @@ name: PVPC Diario - Descarga, PDF y Email
 
 on:
   schedule:
-    - cron: "13 23 * * *"  # Ejecutar todos los días a las 23:35 UTC
+    - cron: "20 23 * * *"  # Ejecutar todos los días a las 23:35 UTC
   push:
     branches:
       - main
@@ -45,18 +45,7 @@ jobs:
     - name: Generar PDF
       run: python ./generar_pdf.py
 
-    # 9. Subir PDF al repositorio (opcional)
-    - name: Subir PDF
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        mkdir -p outputs
-        mv output.pdf outputs/output-$(date +'%Y%m%d').pdf
-        git add outputs/
-        git commit -m "PDF generado automáticamente $(date +'%Y%m%d')" || echo "No hay cambios para subir"
-        git push origin main
-
-    # 10. Enviar PDF por email
+    # 9. Enviar PDF por email
     - name: Enviar PDF por email
       env:
         EMAIL_USER: ${{ secrets.EMAIL_USER }}
@@ -66,7 +55,7 @@ jobs:
         SMTP_PORT: ${{ secrets.SMTP_PORT }}
       run: python ./enviar_email.py
 
-    # 11. Limpiar archivos temporales
+    # 10. Limpiar archivos temporales
     - name: Limpiar archivos temporales
       run: |
         rm -f downloads/*.xls
