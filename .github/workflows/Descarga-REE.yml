@@ -2,7 +2,7 @@ name: Procesar PVPC y enviar PDF automáticamente
 
 on:
   schedule:
-    - cron: "42 22 * * *"  # Ejecutar todos los días a las 23:35 UTC
+    - cron: "48 22 * * *"  # Ejecutar todos los días a las 23:35 UTC
   push:
     branches:
       - main
