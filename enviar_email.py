@@ -10,7 +10,7 @@ EMAIL_USER = os.environ['EMAIL_USER']
 EMAIL_PASSWORD = os.environ['EMAIL_PASSWORD']
 EMAIL_RECEIVER = os.environ['EMAIL_RECEIVER']
 SMTP_SERVER = os.environ['SMTP_SERVER']
-SMTP_PORT = int(os.environ.get('SMTP_PORT'))
+SMTP_PORT = int(os.environ.get('SMTP_PORT', 465))
 
 # Configurar correo
 msg = MIMEMultipart()
