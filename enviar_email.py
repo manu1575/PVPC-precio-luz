@@ -6,11 +6,11 @@ from email.mime.text import MIMEText
 from email import encoders
 
 # Leer secretos del entorno
-EMAIL_USER = os.environ[jmtijada@hotmail.com]
-EMAIL_PASSWORD = os.environ[BtPbnKenARA9pVS]
-EMAIL_RECEIVER = os.environ[renderiza@gmx.com]
-SMTP_SERVER = os.environ[mail.gmx.com]
-SMTP_PORT = int(os.environ[465])
+EMAIL_USER = os.environ['EMAIL_USER']
+EMAIL_PASSWORD = os.environ['EMAIL_PASSWORD']
+EMAIL_RECEIVER = os.environ['EMAIL_RECEIVER']
+SMTP_SERVER = os.environ['SMTP_SERVER']
+SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
 
 # Configurar correo
 msg = MIMEMultipart()
