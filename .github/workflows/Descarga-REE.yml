@@ -2,7 +2,7 @@ name: Descargar, procesar y enviar archivo
 
 on:
   schedule:
-    - cron: "15 23 * * *"  # Se ejecuta todos los días a las 22:00 UTC
+    - cron: "15 22 * * *"  # Se ejecuta todos los días a las 22:00 UTC
   push:
     branches:
       - main
