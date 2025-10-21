@@ -2,7 +2,7 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: 16 12 * * *"  # Ajusta la hora según UTC
+    - cron: 24 13 * * *"  # Ajusta la hora según UTC
   workflow_dispatch:
 
 jobs:
