@@ -3,31 +3,35 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pdfkit
 import os
+from datetime import datetime, timedelta
 
-# Archivo JSON fijo
 json_file = "outputs/pvpc.json"
 if not os.path.exists(json_file):
-    print("❌ No hay archivos JSON de PVPC")
+    print("❌ No hay JSON de PVPC")
     exit(1)
 
-# Leer JSON
 with open(json_file, "r", encoding="utf-8") as f:
     datos = json.load(f)
 
-# Suponiendo que los precios estén en datos["PVPC"] (ajustar según estructura real)
-# Crear DataFrame con horas y precios
 try:
     df = pd.DataFrame(datos["PVPC"])
 except KeyError:
-    print("❌ La estructura JSON no contiene 'PVPC'")
+    print("❌ Estructura JSON inválida")
     exit(1)
 
-# Crear gráfico de barras con línea de precio medio
-fig, ax = plt.subplots(figsize=(10,6))
-precios = df["precio"]  # Ajustar según clave real
+# Fecha para nombre
+fecha_hoy = datetime.now()
+if fecha_hoy.hour < 21:
+    pass
+else:
+    fecha_hoy += timedelta(days=1)
+fecha_archivo = fecha_hoy.strftime("%Y%m%d")
+
+# Gráfico
+fig, ax = plt.subplots(figsize=(10, 6))
+precios = df["precio"]
 horas = df["hora"]
 
-# Colorear según precio
 colores = []
 umbral_bajo = precios.quantile(0.33)
 umbral_alto = precios.quantile(0.66)
@@ -42,23 +46,33 @@ for p in precios:
 ax.bar(horas, precios, color=colores)
 ax.axhline(precios.mean(), color="blue", linestyle="--", label="Precio medio")
 ax.set_xlabel("Hora")
-ax.set_ylabel("Precio (€)")
+ax.set_ylabel("Precio (€/kWh)")  # Claridad
 ax.set_title("PVPC Diario")
 ax.legend()
 
-# Guardar gráfico como HTML para PDF
 os.makedirs("outputs", exist_ok=True)
-html_file = "outputs/temp.html"
-plt.savefig("outputs/temp.png")  # Opcional: guardar imagen también
+img_path = os.path.abspath("outputs/temp.png")
+plt.savefig(img_path)
 plt.close()
 
-# Generar HTML simple
-html_content = df.to_html(index=False)
+# HTML mejorado
+html_content = """
+<h1>PVPC Diario</h1>
+<p>Estadísticas: Máximo: {:.4f} €/kWh, Mínimo: {:.4f} €/kWh, Medio: {:.4f} €/kWh</p>
+{} 
+<img src="{}" alt="Gráfico PVPC">
+""".format(precios.max(), precios.min(), precios.mean(), df.to_html(index=False), img_path)
+
+html_file = "outputs/temp.html"
 with open(html_file, "w", encoding="utf-8") as f:
-    f.write(f"<h1>PVPC Diario</h1>\n{html_content}\n<img src='temp.png'>")
+    f.write(html_content)
 
 # Generar PDF
-output_pdf = "outputs/pvpc_diario.pdf"
+output_pdf = f"outputs/pvpc_{fecha_archivo}.pdf"
 pdfkit.from_file(html_file, output_pdf)
-print(f"✅ PDF generado en {output_pdf}")
+print(f"✅ PDF generado: {output_pdf}")
+
+# Limpieza opcional (optimización)
+os.remove(html_file)
+os.remove(img_path)
 
