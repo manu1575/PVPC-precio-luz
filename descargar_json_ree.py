@@ -20,10 +20,15 @@ response = requests.get(url, headers=headers)
 if response.status_code == 200:
     try:
         datos = response.json()
-        json_file = f"outputs/pvpc-{fecha_hoy}.json"
-        with open(json_file, "w", encoding="utf-8") as f:
+        # Guardar archivo con fecha
+        json_file_fecha = f"outputs/pvpc-{fecha_hoy}.json"
+        with open(json_file_fecha, "w", encoding="utf-8") as f:
             json.dump(datos, f, ensure_ascii=False, indent=2)
-        print(f"✅ Datos guardados en {json_file}")
+        # Guardar copia fija para generar PDF
+        json_file_fijo = "outputs/pvpc.json"
+        with open(json_file_fijo, "w", encoding="utf-8") as f:
+            json.dump(datos, f, ensure_ascii=False, indent=2)
+        print(f"✅ Datos guardados en {json_file_fecha} y copia fija en {json_file_fijo}")
     except ValueError:
         print("❌ Error: respuesta no JSON. Puede que el archivo sea distinto.")
 else:
