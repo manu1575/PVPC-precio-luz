@@ -2,7 +2,7 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "44 14 * * *"  # Ejecutar cada día a las 12:30 UTC
+    - cron: "53 14 * * *"  # Ejecutar cada día a las 12:30 UTC
   workflow_dispatch:
 
 jobs:
