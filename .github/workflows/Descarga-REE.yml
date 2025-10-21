@@ -2,7 +2,7 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: 35 13 * * *"  # Ajusta la hora según UTC
+    - cron: "46 13 * * *"  # Ejecutar todos los días a las 13:33 UTC
   workflow_dispatch:
 
 jobs:
@@ -31,11 +31,11 @@ jobs:
 
       # 5️⃣ Descargar datos PVPC
       - name: Descargar datos PVPC
-        run: python .github/workflows/descargar_json_ree.py
+        run: python descargar_json_ree.py
 
       # 6️⃣ Generar PDF
       - name: Generar PDF
-        run: python .github/workflows/generar_pdf.py
+        run: python generar_pdf.py
 
       # 7️⃣ Enviar PDF por email
       - name: Enviar PDF por email
@@ -45,9 +45,9 @@ jobs:
           EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
           SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
-        run: python .github/workflows/enviar_email.py
+        run: python enviar_email.py
 
-      # 8️⃣ Subir PDF al repositorio (opcional)
+      # 8️⃣ Subir PDF al repositorio
       - name: Subir PDF al repositorio
         run: |
           git config user.name "github-actions[bot]"
