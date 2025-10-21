@@ -2,7 +2,7 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "30 13 * * *"   # Se ejecuta todos los días a las 13:30 UTC (15:30 hora peninsular)
+    - cron: "59 14 * * *"   # Se ejecuta todos los días a las 13:30 UTC (15:30 hora peninsular)
   workflow_dispatch:          # Permite lanzarlo manualmente
 
 jobs:
@@ -55,3 +55,4 @@ jobs:
           git add outputs/*.pdf || echo "No hay PDFs"
           git commit -m "PDF diario $(date +'%Y-%m-%d')" || echo "No hay cambios que subir"
           git push
+
