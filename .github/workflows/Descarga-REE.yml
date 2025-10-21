@@ -2,7 +2,7 @@ name: PVPC Diario - Descarga, PDF y Email
 
 on:
   schedule:
-    - cron: "43 00 * * *"  # Ejecutar todos los días a las 23:35 UTC
+    - cron: "39 08 * * *"  # Ejecutar todos los días a las 23:35 UTC
   push:
     branches:
       - main
