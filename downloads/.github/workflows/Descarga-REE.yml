@@ -2,7 +2,13 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "47 15 * * *"   # Actual: 15:18 UTC. Opción alternativa: "0 19 * * *" para después de publicación (19:00 UTC ≈ 21:00 ES)
+    - cron: "45 19 * * *"   # 19:45 UTC ≈ 21:45 CEST
+    - cron: "0 20 * * *"    # 20:00 UTC ≈ 22:00 CEST
+    - cron: "15 20 * * *"   # 20:15 UTC ≈ 22:15 CEST
+    - cron: "30 20 * * *"   # 20:30 UTC ≈ 22:30 CEST
+    - cron: "45 20 * * *"   # 20:45 UTC ≈ 22:45 CEST
+    - cron: "0 21 * * *"    # 21:00 UTC ≈ 23:00 CEST
+    - cron: "15 21 * * *"   # 21:15 UTC ≈ 23:15 CEST
   workflow_dispatch:
 
 jobs:
@@ -20,19 +26,15 @@ jobs:
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install pandas matplotlib pdfkit requests openpyxl
+          pip install pandas matplotlib pdfkit requests
 
       - name: Instalar wkhtmltopdf
         run: sudo apt-get update && sudo apt-get install -y wkhtmltopdf
 
-      - name: Descargar XLS desde REE
-        run: python descargar_xls_ree.py
-
-      - name: Convertir XLS a XLSX
-        run: python convertir_xls_a_xlsx.py
-
-      - name: Procesar XLSX a JSON
-        run: python procesar_xlsx_a_json.py
+      - name: Descargar JSON desde ESIOS
+        env:
+          ESIOS_TOKEN: ${{ secrets.ESIOS_TOKEN }}
+        run: python descargar_json_ree.py
 
       - name: Generar PDF
         run: python generar_pdf.py
