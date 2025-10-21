@@ -2,42 +2,41 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "18 15 * * *"   # Se ejecuta todos los días a las 13:30 UTC (15:30 hora peninsular)
-  workflow_dispatch:          # Permite lanzarlo manualmente
+    - cron: "47 15 * * *"   # Actual: 15:18 UTC. Opción alternativa: "0 19 * * *" para después de publicación (19:00 UTC ≈ 21:00 ES)
+  workflow_dispatch:
 
 jobs:
   pvpc:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Clonar el repositorio
       - uses: actions/checkout@v3
 
-      # 2️⃣ Configurar Python
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.9"
 
-      # 3️⃣ Instalar dependencias
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
           pip install pandas matplotlib pdfkit requests openpyxl
 
-      # 4️⃣ Instalar wkhtmltopdf (necesario para PDF)
       - name: Instalar wkhtmltopdf
         run: sudo apt-get update && sudo apt-get install -y wkhtmltopdf
 
-      # 5️⃣ Descargar XLS desde REE
-      - name: Descargar archivo XLS PVPC
+      - name: Descargar XLS desde REE
         run: python descargar_xls_ree.py
 
-      # 6️⃣ Generar PDF
+      - name: Convertir XLS a XLSX
+        run: python convertir_xls_a_xlsx.py
+
+      - name: Procesar XLSX a JSON
+        run: python procesar_xlsx_a_json.py
+
       - name: Generar PDF
         run: python generar_pdf.py
 
-      # 7️⃣ Enviar PDF por email
       - name: Enviar PDF por email
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
@@ -47,12 +46,10 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
         run: python enviar_email.py
 
-      # 8️⃣ Subir PDF al repositorio (opcional)
-      - name: Subir PDF al repositorio
+      - name: Subir PDF al repositorio (opcional)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "actions@github.com"
-          git add outputs/*.pdf || echo "No hay PDFs"
-          git commit -m "PDF diario $(date +'%Y-%m-%d')" || echo "No hay cambios que subir"
+          git add outputs/*.pdf || echo "No PDFs"
+          git commit -m "PDF diario $(date +'%Y-%m-%d')" || echo "Sin cambios"
           git push
-
