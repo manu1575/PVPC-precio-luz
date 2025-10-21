@@ -2,16 +2,16 @@ import requests
 import os
 from datetime import datetime
 
-# Crear carpetas si no existen
+# Crear carpetas necesarias
 os.makedirs("downloads", exist_ok=True)
 
-# Fecha de hoy
+# Fecha actual
 fecha_hoy = datetime.now().strftime("%Y-%m-%d")
 
-# URL pública de descarga del archivo XLS de REE (PVPC)
+# URL pública del archivo XLS
 url = f"https://api.esios.ree.es/archives/71/download?date={fecha_hoy}"
 
-# Nombre de salida
+# Ruta de destino
 xls_path = f"downloads/pvpc_{fecha_hoy}.xls"
 
 print(f"🔽 Descargando archivo XLS de PVPC para {fecha_hoy}...")
@@ -26,7 +26,7 @@ response = requests.get(url, headers=headers)
 if response.status_code == 200:
     with open(xls_path, "wb") as f:
         f.write(response.content)
-    print(f"✅ Archivo descargado correctamente: {xls_path}")
+    print(f"✅ Archivo XLS descargado correctamente: {xls_path}")
 else:
-    print(f"❌ Error al descargar. Código: {response.status_code}")
+    print(f"❌ Error al descargar el archivo. Código: {response.status_code}")
     print(response.text)
