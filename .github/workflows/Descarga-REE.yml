@@ -1,63 +1,49 @@
-name: PVPC Diario - Descarga, PDF y Email
+name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "39 08 * * *"  # Ejecutar todos los días a las 23:35 UTC
-  push:
-    branches:
-      - main
+    - cron: "0 23 * * *"  # Ejecutar todos los días a las 23:00 UTC
+  workflow_dispatch:
 
 jobs:
-  ejecutar_flujo:
+  pvpc:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Clonar repositorio
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    # 2. Instalar dependencias Python
-    - name: Instalar dependencias Python
-      run: |
-        python -m pip install --upgrade pip
-        pip install requests pandas openpyxl xlrd pdfkit
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
 
-    # 3. Instalar wkhtmltopdf
-    - name: Instalar wkhtmltopdf
-      run: sudo apt-get update && sudo apt-get install -y wkhtmltopdf
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas matplotlib pdfkit requests openpyxl
 
-    # 4. Crear carpeta downloads
-    - name: Crear carpeta downloads
-      run: mkdir -p downloads
+      - name: Instalar wkhtmltopdf
+        run: sudo apt-get update && sudo apt-get install -y wkhtmltopdf
 
-    # 5. Descargar archivo .xls
-    - name: Descargar archivo .xls
-      run: python ./Descarga-REE.py
+      - name: Descargar datos PVPC
+        run: python descargar_json_ree.py
 
-    # 6. Convertir .xls a .xlsx
-    - name: Convertir a .xlsx
-      run: python ./convertir_xls_a_xlsx.py
+      - name: Generar PDF
+        run: python generar_pdf.py
 
-    # 7. Procesar datos
-    - name: Procesar datos
-      run: python ./procesar_datos.py
+      - name: Enviar PDF por email
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        run: python enviar_email.py
 
-    # 8. Generar PDF
-    - name: Generar PDF
-      run: python ./generar_pdf.py
-
-    # 9. Enviar PDF por email
-    - name: Enviar PDF por email
-      env:
-        EMAIL_USER: ${{ secrets.EMAIL_USER }}
-        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-        EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
-        SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-        SMTP_PORT: ${{ secrets.SMTP_PORT }}
-      run: python ./enviar_email.py
-
-    # 10. Limpiar archivos temporales
-    - name: Limpiar archivos temporales
-      run: |
-        rm -f downloads/*.xls
-        rm -f downloads/*.xlsx
-        rm -f output.pdf
+      - name: Subir PDF al repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "actions@github.com"
+          git add outputs/*.pdf
+          git commit -m "PDF diario $(date +'%Y-%m-%d')" || echo "No hay cambios"
+          git push
