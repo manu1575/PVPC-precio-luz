@@ -2,13 +2,13 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "28 17 * * *"   # Horario verano -1 hora, horario invierno -2 horas
-    - cron: "0 20 * * *"    # 20:00 UTC ≈ 22:00 CEST
-    - cron: "15 20 * * *"   # 20:15 UTC ≈ 22:15 CEST
-    - cron: "30 20 * * *"   # 20:30 UTC ≈ 22:30 CEST
-    - cron: "45 20 * * *"   # 20:45 UTC ≈ 22:45 CEST
-    - cron: "0 21 * * *"    # 21:00 UTC ≈ 23:00 CEST
-    - cron: "15 21 * * *"   # 21:15 UTC ≈ 23:15 CEST (margen hasta 23:30)
+    #- cron: "28 17 * * *"   # Horario verano -1 hora, horario invierno -2 horas
+    #- cron: "0 20 * * *"    # 20:00 UTC ≈ 22:00 CEST
+    #- cron: "15 20 * * *"   # 20:15 UTC ≈ 22:15 CEST
+    #- cron: "30 20 * * *"   # 20:30 UTC ≈ 22:30 CEST
+    #- cron: "45 20 * * *"   # 20:45 UTC ≈ 22:45 CEST
+    #- cron: "0 21 * * *"    # 21:00 UTC ≈ 23:00 CEST
+    #- cron: "15 21 * * *"   # 21:15 UTC ≈ 23:15 CEST (margen hasta 23:30)
   workflow_dispatch:
 
 jobs:
