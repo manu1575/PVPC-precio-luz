@@ -1,7 +1,10 @@
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
-import pdfkit
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+from reportlab.lib import colors
 import os
 from datetime import datetime, timedelta
 
@@ -20,7 +23,7 @@ except KeyError:
     print("❌ Estructura JSON inválida")
     exit(1)
 
-# === Preparar fecha para nombre del archivo ===
+# === Fecha para nombre ===
 fecha_hoy = datetime.now()
 if fecha_hoy.hour >= 21:
     fecha_hoy += timedelta(days=1)
@@ -51,53 +54,53 @@ ax.legend()
 
 os.makedirs("outputs", exist_ok=True)
 img_path = os.path.abspath("outputs/temp.png")
-plt.savefig(img_path)
+plt.savefig(img_path, bbox_inches="tight")
 plt.close()
 
-# === Crear HTML temporal con gráfico ===
-# Usar ruta absoluta file:// para evitar errores de acceso en wkhtmltopdf
-img_path_uri = f"file://{img_path}"
-
-html_content = f"""
-<h1>PVPC Diario</h1>
-<p>Estadísticas:</p>
-<ul>
-  <li>Máximo: {precios.max():.4f} €/kWh</li>
-  <li>Mínimo: {precios.min():.4f} €/kWh</li>
-  <li>Medio: {precios.mean():.4f} €/kWh</li>
-</ul>
-{df.to_html(index=False)} 
-<br>
-<img src="{img_path_uri}" alt="Gráfico PVPC" style="width:90%;margin-top:20px;">
-"""
-
-html_file = "outputs/temp.html"
-with open(html_file, "w", encoding="utf-8") as f:
-    f.write(html_content)
-
-# === Generar PDF con configuración local ===
+# === Crear PDF con ReportLab ===
 output_pdf = f"outputs/pvpc_{fecha_archivo}.pdf"
+c = canvas.Canvas(output_pdf, pagesize=A4)
+width, height = A4
 
-# Configurar wkhtmltopdf para GitHub Actions
-config = pdfkit.configuration(wkhtmltopdf="/usr/bin/wkhtmltopdf")
+# Título
+c.setFont("Helvetica-Bold", 18)
+c.drawString(50, height - 50, "Informe Diario PVPC")
 
-options = {
-    "enable-local-file-access": None,  # Permitir acceso a archivos locales
-    "quiet": "",                       # Suprimir mensajes
-    "encoding": "UTF-8",
-    "page-size": "A4",
-    "margin-top": "10mm",
-    "margin-right": "10mm",
-    "margin-bottom": "10mm",
-    "margin-left": "10mm",
-}
+# Estadísticas
+c.setFont("Helvetica", 12)
+texto = f"""
+Fecha: {fecha_hoy.strftime('%d/%m/%Y')}
+Precio máximo: {precios.max():.4f} €/kWh
+Precio mínimo: {precios.min():.4f} €/kWh
+Precio medio:  {precios.mean():.4f} €/kWh
+"""
+for i, linea in enumerate(texto.strip().split("\n")):
+    c.drawString(50, height - 90 - (i * 15), linea)
 
-pdfkit.from_file(html_file, output_pdf, configuration=config, options=options)
+# Insertar gráfico
+img = ImageReader(img_path)
+c.drawImage(img, 50, height / 2 - 50, width=500, preserveAspectRatio=True, mask="auto")
+
+# Tabla de datos
+c.setFont("Helvetica-Bold", 12)
+c.drawString(50, height / 2 - 120, "Tabla de precios por hora:")
+
+c.setFont("Helvetica", 10)
+y = height / 2 - 140
+for i, row in df.iterrows():
+    line = f"{row['hora']}: {row['precio']:.4f} €/kWh"
+    c.drawString(60, y, line)
+    y -= 12
+    if y < 50:  # nueva página si no cabe
+        c.showPage()
+        y = height - 50
+
+c.save()
 print(f"✅ PDF generado correctamente: {output_pdf}")
 
-# === Limpieza de archivos temporales ===
+# === Limpieza ===
 try:
-    os.remove(html_file)
     os.remove(img_path)
 except Exception as e:
     print(f"⚠️ Limpieza incompleta: {e}")
+
