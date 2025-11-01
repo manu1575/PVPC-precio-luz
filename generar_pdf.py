@@ -79,10 +79,10 @@ c.drawImage(img, 50, height / 2 - 40, width=width - 100, preserveAspectRatio=Tru
 
 # Tabla de precios justo debajo del gráfico, distancia reducida a 1/3
 c.setFont("Helvetica-Bold", 12)
-c.drawString(50, height / 2 - 70 + 2, "Tabla de precios por hora:")
+c.drawString(50, height / 2 - 10 + 2, "Tabla de precios por hora:")
 
 c.setFont("Helvetica", 10)
-y = height / 2 - 170 + 2  # ajuste de distancia reducida
+y = height / 2 - 10 + 2  # ajuste de distancia reducida
 for _, row in df.iterrows():
     line = f"{row['hora']}: {row['precio']:.4f} €/kWh"
     # Colorear según precio
