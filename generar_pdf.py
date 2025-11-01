@@ -82,7 +82,7 @@ c.setFont("Helvetica-Bold", 12)
 c.drawString(50, height / 2 - 10 + 2, "Tabla de precios por hora:")
 
 c.setFont("Helvetica", 10)
-y = height / 2 - 10 + 2  # ajuste de distancia reducida
+y = height / 2 - 20 + 2  # ajuste de distancia reducida
 for _, row in df.iterrows():
     line = f"{row['hora']}: {row['precio']:.4f} €/kWh"
     # Colorear según precio
