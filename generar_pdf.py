@@ -8,7 +8,7 @@ from reportlab.lib import colors
 import os
 from datetime import datetime, timedelta
 
-# === Cargar JSON de PVPC ===
+# === Cargar JSON ===
 json_file = "outputs/pvpc.json"
 if not os.path.exists(json_file):
     print("❌ No hay JSON de PVPC")
@@ -17,27 +17,23 @@ if not os.path.exists(json_file):
 with open(json_file, "r", encoding="utf-8") as f:
     datos = json.load(f)
 
-try:
-    df = pd.DataFrame(datos["PVPC"])
-except KeyError:
-    print("❌ Estructura JSON inválida")
-    exit(1)
+df = pd.DataFrame(datos["PVPC"])
 
-# === Fecha para nombre ===
+# === Fecha para nombre de PDF ===
 fecha_hoy = datetime.now()
 if fecha_hoy.hour >= 21:
     fecha_hoy += timedelta(days=1)
 fecha_archivo = fecha_hoy.strftime("%Y%m%d")
+output_pdf = f"outputs/pvpc_{fecha_archivo}.pdf"
 
 # === Crear gráfico ligeramente más pequeño ===
-fig, ax = plt.subplots(figsize=(8, 5))
+fig, ax = plt.subplots(figsize=(10, 5))  # menor altura
 precios = df["precio"]
 horas = df["hora"]
 
-# Colores según precio
 umbral_bajo = precios.quantile(0.33)
 umbral_alto = precios.quantile(0.66)
-colores = ["green" if p <= umbral_bajo else "yellow" if p <= umbral_alto else "red" for p in precios]
+colores = ['green' if p <= umbral_bajo else 'yellow' if p <= umbral_alto else 'red' for p in precios]
 
 ax.bar(horas, precios, color=colores)
 ax.axhline(precios.mean(), color="blue", linestyle="--", label=f"Precio medio: {precios.mean():.4f} €/kWh")
@@ -53,8 +49,7 @@ img_path = os.path.abspath("outputs/temp.png")
 plt.savefig(img_path, bbox_inches="tight")
 plt.close()
 
-# === Crear PDF en A4 vertical ===
-output_pdf = f"outputs/pvpc_{fecha_archivo}.pdf"
+# === Crear PDF vertical A4 ===
 c = canvas.Canvas(output_pdf, pagesize=A4)
 width, height = A4
 
@@ -73,18 +68,19 @@ Precio medio:  {precios.mean():.4f} €/kWh
 for i, linea in enumerate(texto.strip().split("\n")):
     c.drawString(50, height - 90 - (i * 15), linea)
 
-# Insertar gráfico reducido
+# Insertar gráfico
 img = ImageReader(img_path)
-c.drawImage(img, 50, height / 2 - 50, width=width - 100, preserveAspectRatio=True, mask="auto")
+c.drawImage(img, 50, height / 2 - 40, width=width - 100, preserveAspectRatio=True, mask="auto")
 
-# Tabla de precios cerca del gráfico, con colores
+# Tabla de precios justo debajo del gráfico
 c.setFont("Helvetica-Bold", 12)
 c.drawString(50, height / 2 - 150, "Tabla de precios por hora:")
 
 c.setFont("Helvetica", 10)
 y = height / 2 - 170
-for i, row in df.iterrows():
+for _, row in df.iterrows():
     line = f"{row['hora']}: {row['precio']:.4f} €/kWh"
+    # Colorear según precio
     if row['precio'] <= umbral_bajo:
         c.setFillColor(colors.green)
     elif row['precio'] <= umbral_alto:
@@ -97,11 +93,10 @@ for i, row in df.iterrows():
 c.setFillColor(colors.black)
 c.save()
 
-# === Limpieza de imagen temporal ===
+# Limpieza
 try:
     os.remove(img_path)
 except Exception as e:
     print(f"⚠️ Limpieza incompleta: {e}")
 
 print(f"✅ PDF generado correctamente: {output_pdf}")
-
