@@ -1,7 +1,7 @@
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors
@@ -30,7 +30,7 @@ if fecha_hoy.hour >= 21:
 fecha_archivo = fecha_hoy.strftime("%Y%m%d")
 
 # === Crear gráfico ===
-fig, ax = plt.subplots(figsize=(10, 6))
+fig, ax = plt.subplots(figsize=(12, 6))
 precios = df["precio"]
 horas = df["hora"]
 
@@ -45,22 +45,24 @@ for p in precios:
     else:
         colores.append("red")
 
-ax.bar(horas, precios, color=colores)
+bars = ax.bar(horas, precios, color=colores)
 ax.axhline(precios.mean(), color="blue", linestyle="--", label="Precio medio")
 ax.set_xlabel("Hora")
 ax.set_ylabel("Precio (€/kWh)")
 ax.set_title("PVPC Diario")
 ax.legend()
+plt.xticks(rotation=45, ha='right')  # evita solapamiento de horas
+plt.tight_layout()
 
 os.makedirs("outputs", exist_ok=True)
 img_path = os.path.abspath("outputs/temp.png")
 plt.savefig(img_path, bbox_inches="tight")
 plt.close()
 
-# === Crear PDF con ReportLab ===
+# === Crear PDF con ReportLab en horizontal ===
 output_pdf = f"outputs/pvpc_{fecha_archivo}.pdf"
-c = canvas.Canvas(output_pdf, pagesize=A4)
-width, height = A4
+c = canvas.Canvas(output_pdf, pagesize=landscape(A4))
+width, height = landscape(A4)
 
 # Título
 c.setFont("Helvetica-Bold", 18)
@@ -79,21 +81,27 @@ for i, linea in enumerate(texto.strip().split("\n")):
 
 # Insertar gráfico
 img = ImageReader(img_path)
-c.drawImage(img, 50, height / 2 - 50, width=500, preserveAspectRatio=True, mask="auto")
+c.drawImage(img, 50, height / 2 - 70, width=width - 100, preserveAspectRatio=True, mask="auto")
 
-# Tabla de datos
+# Tabla de precios más cercana al gráfico, con colores
 c.setFont("Helvetica-Bold", 12)
-c.drawString(50, height / 2 - 120, "Tabla de precios por hora:")
+c.drawString(50, height / 2 - 150, "Tabla de precios por hora:")
 
 c.setFont("Helvetica", 10)
-y = height / 2 - 140
+y = height / 2 - 170
 for i, row in df.iterrows():
     line = f"{row['hora']}: {row['precio']:.4f} €/kWh"
+    # Colorear según precio
+    if row['precio'] <= umbral_bajo:
+        c.setFillColor(colors.green)
+    elif row['precio'] <= umbral_alto:
+        c.setFillColor(colors.yellow)
+    else:
+        c.setFillColor(colors.red)
     c.drawString(60, y, line)
     y -= 12
-    if y < 50:  # nueva página si no cabe
-        c.showPage()
-        y = height - 50
+
+c.setFillColor(colors.black)  # reset color
 
 c.save()
 print(f"✅ PDF generado correctamente: {output_pdf}")
@@ -103,4 +111,3 @@ try:
     os.remove(img_path)
 except Exception as e:
     print(f"⚠️ Limpieza incompleta: {e}")
-
