@@ -2,15 +2,17 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "34 14 * * *"  # Horario verano -2 horas, horario invierno -1 hora
+    - cron: "17 13 * * *"  # Horario verano -2h, invierno -1h
   workflow_dispatch:
 
 jobs:
   pvpc:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Clonar repositorio
+      # 1️⃣ Clonar repositorio con token que permite push
       - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # 2️⃣ Configurar Python
       - name: Configurar Python
@@ -30,7 +32,7 @@ jobs:
           ESIOS_TOKEN: ${{ secrets.ESIOS_TOKEN }}
         run: python descargar_json_ree.py
 
-      # 5️⃣ Generar PDF usando ReportLab
+      # 5️⃣ Generar PDF (horizontal y tabla coloreada)
       - name: Generar PDF
         run: python generar_pdf.py
 
@@ -44,7 +46,7 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
         run: python enviar_email.py
 
-      # 7️⃣ Subir PDF al repositorio (opcional)
+      # 7️⃣ Subir PDF al repositorio
       - name: Subir PDF al repositorio
         run: |
           git config user.name "github-actions[bot]"
