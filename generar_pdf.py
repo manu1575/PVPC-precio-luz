@@ -75,11 +75,11 @@ for i, linea in enumerate(texto.strip().split("\n")):
 
 # Insertar gráfico
 img = ImageReader(img_path)
-c.drawImage(img, 50, height / 2 - 50, width=width - 100, preserveAspectRatio=True, mask="auto")
+c.drawImage(img, 50, height / 2 - 40, width=width - 100, preserveAspectRatio=True, mask="auto")
 
 # Tabla de precios justo debajo del gráfico, distancia reducida a 1/3
 c.setFont("Helvetica-Bold", 12)
-c.drawString(50, height / 2 - 150 + 2, "Tabla de precios por hora:")
+c.drawString(50, height / 2 - 70 + 2, "Tabla de precios por hora:")
 
 c.setFont("Helvetica", 10)
 y = height / 2 - 170 + 2  # ajuste de distancia reducida
