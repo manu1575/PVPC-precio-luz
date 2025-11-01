@@ -27,15 +27,20 @@ fecha_archivo = fecha_hoy.strftime("%Y%m%d")
 output_pdf = f"outputs/pvpc_{fecha_archivo}.pdf"
 
 # === Crear gráfico ligeramente más pequeño ===
-fig, ax = plt.subplots(figsize=(10, 5))  # menor altura
+fig, ax = plt.subplots(figsize=(10, 5))
 precios = df["precio"]
 horas = df["hora"]
 
 umbral_bajo = precios.quantile(0.33)
 umbral_alto = precios.quantile(0.66)
-colores = ['green' if p <= umbral_bajo else 'yellow' if p <= umbral_alto else 'red' for p in precios]
+colores = [
+    colors.green if p <= umbral_bajo else 
+    colors.Color(1,0.85,0) if p <= umbral_alto else 
+    colors.red 
+    for p in precios
+]
 
-ax.bar(horas, precios, color=colores)
+ax.bar(horas, precios, color=['green' if p <= umbral_bajo else '#FFE135' if p <= umbral_alto else 'red' for p in precios])
 ax.axhline(precios.mean(), color="blue", linestyle="--", label=f"Precio medio: {precios.mean():.4f} €/kWh")
 ax.set_xlabel("Hora")
 ax.set_ylabel("Precio (€/kWh)")
@@ -70,21 +75,21 @@ for i, linea in enumerate(texto.strip().split("\n")):
 
 # Insertar gráfico
 img = ImageReader(img_path)
-c.drawImage(img, 50, height / 2 - 40, width=width - 100, preserveAspectRatio=True, mask="auto")
+c.drawImage(img, 50, height / 2 - 50, width=width - 100, preserveAspectRatio=True, mask="auto")
 
-# Tabla de precios justo debajo del gráfico
+# Tabla de precios justo debajo del gráfico, distancia reducida a 1/3
 c.setFont("Helvetica-Bold", 12)
-c.drawString(50, height / 2 - 150, "Tabla de precios por hora:")
+c.drawString(50, height / 2 - 150 + 2, "Tabla de precios por hora:")
 
 c.setFont("Helvetica", 10)
-y = height / 2 - 170
+y = height / 2 - 170 + 2  # ajuste de distancia reducida
 for _, row in df.iterrows():
     line = f"{row['hora']}: {row['precio']:.4f} €/kWh"
     # Colorear según precio
     if row['precio'] <= umbral_bajo:
         c.setFillColor(colors.green)
     elif row['precio'] <= umbral_alto:
-        c.setFillColor(colors.yellow)
+        c.setFillColor(colors.Color(1,0.85,0))  # plátano
     else:
         c.setFillColor(colors.red)
     c.drawString(60, y, line)
