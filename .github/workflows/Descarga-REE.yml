@@ -2,7 +2,7 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "39 15 * * *"  # Horario verano -2h, invierno -1h
+    - cron: "50 15 * * *"  # Horario verano -2h, invierno -1h
   workflow_dispatch:
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
           ESIOS_TOKEN: ${{ secrets.ESIOS_TOKEN }}
         run: python descargar_json_ree.py
 
-      # 5️⃣ Generar PDF (horizontal y tabla coloreada)
+      # 5️⃣ Generar PDF (horizontal y tabla coloreada) #
       - name: Generar PDF
         run: python generar_pdf.py
 
@@ -46,7 +46,7 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
         run: python enviar_email.py
 
-      # 7️⃣ Subir PDF al repositorio #
+      # 7️⃣ Subir PDF al repositorio
       - name: Subir PDF al repositorio
         run: |
           git config user.name "github-actions[bot]"
