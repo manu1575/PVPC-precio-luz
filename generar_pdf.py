@@ -37,6 +37,7 @@ horas = df["hora"]
 umbral_bajo = precios.quantile(0.33)
 umbral_alto = precios.quantile(0.66)
 
+horas = df["hora"].apply(lambda x: x.replace('-', ','))  # "01-00" → "01,00"
 ax.bar(horas, precios, color=['green' if p <= umbral_bajo else '#FFE135' if p <= umbral_alto else 'red' for p in precios])
 ax.axhline(precios.mean(), color="blue", linestyle="--", label=f"Precio medio: {precios.mean():.4f} €/kWh")
 ax.set_xlabel("Hora")
