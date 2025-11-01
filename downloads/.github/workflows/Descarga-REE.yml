@@ -2,7 +2,7 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    #- cron: "28 17 * * *"   # Horario verano -1 hora, horario invierno -2 horas
+    - cron: "57 08 * * *"   # Horario verano -1 hora, horario invierno -2 horas
     #- cron: "0 20 * * *"    # 20:00 UTC ≈ 22:00 CEST
     #- cron: "15 20 * * *"   # 20:15 UTC ≈ 22:15 CEST
     #- cron: "30 20 * * *"   # 20:30 UTC ≈ 22:30 CEST
