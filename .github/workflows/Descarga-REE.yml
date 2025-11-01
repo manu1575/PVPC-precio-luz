@@ -2,41 +2,33 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "50 15 * * *"  # Horario verano -2h, invierno -1h
+    - cron: "01 16 * * *"  # Horario verano -2h, invierno -1h
   workflow_dispatch:
 
 jobs:
   pvpc:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Clonar repositorio con token que permite push
       - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2️⃣ Configurar Python
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.9"
 
-      # 3️⃣ Instalar dependencias necesarias
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
           pip install pandas matplotlib requests reportlab
 
-      # 4️⃣ Descargar JSON desde ESIOS
       - name: Descargar JSON desde ESIOS
         env:
           ESIOS_TOKEN: ${{ secrets.ESIOS_TOKEN }}
         run: python descargar_json_ree.py
 
-      # 5️⃣ Generar PDF (horizontal y tabla coloreada) #
       - name: Generar PDF
         run: python generar_pdf.py
 
-      # 6️⃣ Enviar PDF por email
       - name: Enviar PDF por email
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
@@ -46,15 +38,5 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
         run: python enviar_email.py
 
-      # 7️⃣ Subir PDF al repositorio
-      - name: Subir PDF al repositorio
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "actions@github.com"
-          
-          git add outputs/*.pdf || echo "No PDFs para subir"
-          git commit -m "PDF diario $(date +'%Y-%m-%d')" || echo "Sin cambios"
-          
-          # Force push para sobrescribir cambios remotos en outputs/
-          git push --force origin main
-
+      - name: Limpiar PDFs antiguos
+        run: rm -f outputs/*.pdf
