@@ -6,7 +6,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # === Cargar JSON ===
 json_file = "outputs/pvpc.json"
@@ -19,11 +19,14 @@ with open(json_file, "r", encoding="utf-8") as f:
 
 df = pd.DataFrame(datos["PVPC"])
 
-# === Fecha para nombre de PDF ===
-fecha_hoy = datetime.now()
-if fecha_hoy.hour >= 21:
-    fecha_hoy += timedelta(days=1)
-fecha_archivo = fecha_hoy.strftime("%Y%m%d")
+# === Fecha para nombre de PDF tomada del JSON ===
+try:
+    # Asume que JSON tiene campo 'datetime' en formato ISO
+    primer_dt = datetime.fromisoformat(datos["PVPC"][0]["datetime"].replace('Z','+00:00'))
+except KeyError:
+    # Si no existe, se usa fecha actual
+    primer_dt = datetime.now()
+fecha_archivo = primer_dt.strftime("%Y%m%d")
 output_pdf = f"outputs/pvpc_{fecha_archivo}.pdf"
 
 # === Crear gráfico ligeramente más pequeño ===
@@ -33,12 +36,6 @@ horas = df["hora"]
 
 umbral_bajo = precios.quantile(0.33)
 umbral_alto = precios.quantile(0.66)
-colores = [
-    colors.green if p <= umbral_bajo else 
-    colors.Color(1,0.85,0) if p <= umbral_alto else 
-    colors.red 
-    for p in precios
-]
 
 ax.bar(horas, precios, color=['green' if p <= umbral_bajo else '#FFE135' if p <= umbral_alto else 'red' for p in precios])
 ax.axhline(precios.mean(), color="blue", linestyle="--", label=f"Precio medio: {precios.mean():.4f} €/kWh")
@@ -65,7 +62,7 @@ c.drawString(50, height - 50, "Informe Diario PVPC")
 # Estadísticas
 c.setFont("Helvetica", 12)
 texto = f"""
-Fecha: {fecha_hoy.strftime('%d/%m/%Y')}
+Fecha: {primer_dt.strftime('%d/%m/%Y')}
 Precio máximo: {precios.max():.4f} €/kWh
 Precio mínimo: {precios.min():.4f} €/kWh
 Precio medio:  {precios.mean():.4f} €/kWh
@@ -79,17 +76,17 @@ c.drawImage(img, 50, height / 2 - 40, width=width - 100, preserveAspectRatio=Tru
 
 # Tabla de precios justo debajo del gráfico, distancia reducida a 1/3
 c.setFont("Helvetica-Bold", 12)
-c.drawString(50, height / 2 - 10 + 2, "Tabla de precios por hora:")
+c.drawString(50, height / 2 - 30, "Tabla de precios por hora:")
 
 c.setFont("Helvetica", 10)
-y = height / 2 - 30 + 2  # ajuste de distancia reducida
+y = height / 2 - 50  # posición inicial ajustada más cerca del gráfico
 for _, row in df.iterrows():
     line = f"{row['hora']}: {row['precio']:.4f} €/kWh"
     # Colorear según precio
     if row['precio'] <= umbral_bajo:
         c.setFillColor(colors.green)
     elif row['precio'] <= umbral_alto:
-        c.setFillColor(colors.Color(1,0.85,0))  # plátano
+        c.setFillColor(colors.Color(1, 0.85, 0))  # plátano
     else:
         c.setFillColor(colors.red)
     c.drawString(60, y, line)
