@@ -2,7 +2,7 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "17 13 * * *"  # Horario verano -2h, invierno -1h
+    - cron: "35 15 * * *"  # Horario verano -2h, invierno -1h
   workflow_dispatch:
 
 jobs:
