@@ -51,16 +51,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "actions@github.com"
-    
-          # Añadir PDF generado
+          
           git add outputs/*.pdf || echo "No PDFs para subir"
-    
-          # Commit si hay cambios
           git commit -m "PDF diario $(date +'%Y-%m-%d')" || echo "Sin cambios"
-
-          # Traer cambios del remoto y rebasear los commits locales encima
-          git pull --rebase origin main || echo "No se pudo rebasear"
-
-          # Push final al remoto
-          git push origin main
+          
+          # Force push para sobrescribir cambios remotos en outputs/
+          git push --force origin main
 
