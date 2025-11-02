@@ -1,42 +1,52 @@
-name: Informe Diario PVPC
+name: Generar informe PVPC diario
 
 on:
   schedule:
-    - cron: "55 20 * * *"  # Horario verano -2h, invierno -1h
+    # Ejecuta todos los días a las 21:50 hora local Madrid (20:50 UTC en invierno, y 19:50 en verano)
+    - cron: "50 20 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  pvpc:
+  generar-informe:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+
     steps:
-      - uses: actions/checkout@v3
+      - name: 📦 Clonar repositorio
+        uses: actions/checkout@v4
 
-      - name: Configurar Python
-        uses: actions/setup-python@v4
+      - name: 🧩 Configurar Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.11"
 
-      - name: Instalar dependencias
+      - name: 📚 Instalar dependencias
         run: |
-          python -m pip install --upgrade pip
-          pip install pandas matplotlib requests reportlab
+          pip install requests pandas matplotlib reportlab
 
-      - name: Descargar JSON desde ESIOS
+      - name: 🕐 Descargar datos PVPC desde REE
         env:
           ESIOS_TOKEN: ${{ secrets.ESIOS_TOKEN }}
-        run: python descargar_json_ree.py
+        run: |
+          python descargar_json_ree.py
 
-      - name: Generar PDF
-        run: python generar_pdf.py
+      - name: 📊 Generar PDF diario
+        run: |
+          python generar_pdf.py
 
-      - name: Enviar PDF por email
-        env:
-          EMAIL_USER: ${{ secrets.EMAIL_USER }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
-          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-        run: python enviar_email.py
+      - name: 🧹 Mantener solo archivos recientes
+        run: |
+          ls outputs | grep -E 'pvpc_.*\.pdf' | sort | head -n -1 | xargs -r rm -- && echo "🧹 PDFs antiguos eliminados."
+          ls outputs | grep -E 'pvpc_.*\.json' | sort | head -n -1 | xargs -r rm -- || true
 
-      - name: Limpiar PDFs antiguos
-        run: rm -f outputs/*.pdf
+      - name: 🚀 Subir cambios al repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase
+          git add outputs/
+          git commit -m "Actualización automática PVPC $(date +'%Y-%m-%d')" || echo "Sin cambios que confirmar."
+          git push
