@@ -2,7 +2,7 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "17 13 * * *"  # Ejecuta todos los días (ajusta hora UTC según temporada)
+    - cron: "13 22 * * *"  # Ejecuta todos los días (ajusta hora UTC según temporada)
   workflow_dispatch:
 
 jobs:
