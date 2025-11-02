@@ -18,8 +18,9 @@ with open(json_file, "r", encoding="utf-8") as f:
     datos = json.load(f)
 
 df = pd.DataFrame(datos["PVPC"])
-fecha_json = datos.get("fecha_publicacion")
 
+# === Tomar la fecha de publicación del JSON ===
+fecha_json = datos.get("fecha_publicacion")
 if not fecha_json:
     print("⚠️ No se encontró 'fecha_publicacion' en el JSON. Se usará la fecha actual.")
     fecha_json = datetime.now().strftime("%Y-%m-%d")
@@ -36,19 +37,13 @@ horas = df["hora"]
 umbral_bajo = precios.quantile(0.33)
 umbral_alto = precios.quantile(0.66)
 
-# Colores para PDF y matplotlib
-colores_pdf = [
-    colors.green if p <= umbral_bajo else
-    colors.Color(0.9, 0.7, 0.0) if p <= umbral_alto else
-    colors.red
+# Colores para el gráfico y la tabla: verde, dorado fuerte, rojo
+colores_barras = [
+    'green' if p <= umbral_bajo else '#E1A500' if p <= umbral_alto else 'red'
     for p in precios
 ]
-colores_plot = ['green' if p <= umbral_bajo else '#E1A500' if p <= umbral_alto else 'red' for p in precios]
 
-# Formato de horas: HH,MM
-horas_plot = [h.replace("-", ",") for h in horas]
-
-ax.bar(horas_plot, precios, color=colores_plot)
+ax.bar([h.replace("-", ",") for h in horas], precios, color=colores_barras)
 ax.axhline(precios.mean(), color="blue", linestyle="--",
             label=f"Precio medio: {precios.mean():.4f} €/kWh")
 ax.set_xlabel("Hora")
@@ -86,7 +81,7 @@ img = ImageReader(img_path)
 c.drawImage(img, 50, height / 2 - 40, width=width - 100,
             preserveAspectRatio=True, mask="auto")
 
-# Tabla de precios justo debajo del gráfico, distancia reducida
+# Tabla de precios justo debajo del gráfico (distancia reducida)
 c.setFont("Helvetica-Bold", 12)
 c.drawString(50, height / 2 - 10, "Tabla de precios por hora:")
 
@@ -97,7 +92,7 @@ for _, row in df.iterrows():
     if row['precio'] <= umbral_bajo:
         c.setFillColor(colors.green)
     elif row['precio'] <= umbral_alto:
-        c.setFillColor(colors.Color(0.9, 0.7, 0.0))  # dorado fuerte
+        c.setFillColor(colors.Color(0.85, 0.65, 0.0))  # dorado más oscuro
     else:
         c.setFillColor(colors.red)
     c.drawString(60, y, line)
