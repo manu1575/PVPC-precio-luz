@@ -2,12 +2,12 @@ name: Generar informe PVPC diario
 
 on:
   schedule:
-    # Ejecuta todos los días a las 21:50 hora local Madrid (20:50 UTC en invierno, y 19:50 en verano)
+    # Ejecuta todos los días a las 21:50 hora local Madrid (20:50 UTC en invierno)
     - cron: "50 20 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write  # Necesario para push de PDFs al repositorio
 
 jobs:
   generar-informe:
@@ -15,33 +15,48 @@ jobs:
     timeout-minutes: 120
 
     steps:
+      # 1️⃣ Clonar repositorio
       - name: 📦 Clonar repositorio
         uses: actions/checkout@v4
 
+      # 2️⃣ Configurar Python
       - name: 🧩 Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+      # 3️⃣ Instalar dependencias
       - name: 📚 Instalar dependencias
         run: |
-          pip install requests pandas matplotlib reportlab
+          pip install --upgrade pip
+          pip install requests pandas matplotlib reportlab pytz
 
-      - name: 🕐 Descargar datos PVPC desde REE
+      # 4️⃣ Descargar datos PVPC desde REE con reintentos
+      - name: 🕐 Descargar datos PVPC
         env:
           ESIOS_TOKEN: ${{ secrets.ESIOS_TOKEN }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
         run: |
           python descargar_json_ree.py
 
+      # 5️⃣ Generar PDF diario
       - name: 📊 Generar PDF diario
         run: |
           python generar_pdf.py
 
-      - name: 🧹 Mantener solo archivos recientes
+      # 6️⃣ Mantener solo archivos recientes
+      - name: 🧹 Eliminar PDFs y JSON antiguos
         run: |
+          # Mantener solo el último PDF
           ls outputs | grep -E 'pvpc_.*\.pdf' | sort | head -n -1 | xargs -r rm -- && echo "🧹 PDFs antiguos eliminados."
+          # Mantener solo el último JSON
           ls outputs | grep -E 'pvpc_.*\.json' | sort | head -n -1 | xargs -r rm -- || true
 
+      # 7️⃣ Subir PDFs y JSON al repositorio
       - name: 🚀 Subir cambios al repositorio
         run: |
           git config user.name "github-actions[bot]"
