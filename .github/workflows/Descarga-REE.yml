@@ -1,79 +1,76 @@
-name: Generar informe PVPC diario
+name: Informe Diario PVPC
 
 on:
   schedule:
-    # Ejecuta todos los días a las 21:50 hora local Madrid (20:50 UTC en invierno y 19:50 en verano)
-    - cron: "50 20 * * *"
+    - cron: "17 13 * * *"  # Ejecuta todos los días (ajusta hora UTC según temporada)
   workflow_dispatch:
 
-permissions:
-  contents: write  # Necesario para push de PDFs al repositorio
-
 jobs:
-  generar-informe:
+  pvpc:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
 
     steps:
-      # 1️⃣ Clonar repositorio
-      - name: 📦 Clonar repositorio
-        uses: actions/checkout@v4
+      # 1️⃣ Clonar repositorio con permisos de escritura
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # 2️⃣ Configurar Python
-      - name: 🧩 Configurar Python
-        uses: actions/setup-python@v5
+      - name: Configurar Python
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.9"
 
-      # 3️⃣ Instalar dependencias
-      - name: 📚 Instalar dependencias
+      # 3️⃣ Instalar dependencias necesarias
+      - name: Instalar dependencias
         run: |
-          pip install --upgrade pip
-          pip install requests pandas matplotlib reportlab pytz
+          python -m pip install --upgrade pip
+          pip install pandas matplotlib requests reportlab
 
-      # 4️⃣ Descargar datos PVPC desde REE con reintentos
-      - name: 🕐 Descargar datos PVPC
+      # 4️⃣ Descargar JSON desde ESIOS (solo si hay datos nuevos)
+      - name: Descargar JSON desde ESIOS
         env:
           ESIOS_TOKEN: ${{ secrets.ESIOS_TOKEN }}
-          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+        run: python descargar_json_ree.py
+
+      # 5️⃣ Generar PDF solo si el JSON está disponible
+      - name: Generar PDF
+        if: success() && exists('outputs/pvpc.json')
+        run: python generar_pdf.py
+
+      # 6️⃣ Enviar PDF por correo si se generó correctamente
+      - name: Enviar PDF por correo
+        if: success() && exists('outputs/pvpc_*.pdf')
+        env:
+          EMAIL_REMITENTE: ${{ secrets.EMAIL_REMITENTE }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
-          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-        run: |
-          python descargar_json_ree.py
+          EMAIL_DESTINATARIO: ${{ secrets.EMAIL_DESTINATARIO }}
+        run: python enviar_email.py
 
-      # 5️⃣ Generar PDF diario
-      - name: 📊 Generar PDF diario
-        run: |
-          python generar_pdf.py
-
-      # 6️⃣ Limpiar archivos antiguos de manera segura
-      - name: 🧹 Mantener solo archivos recientes
-        run: |
-          # Mantener solo el último PDF
-          ls -1t outputs/pvpc_*.pdf 2>/dev/null | tail -n +2 | xargs -r rm -f
-          # Mantener solo el último JSON
-          ls -1t outputs/pvpc.json 2>/dev/null | tail -n +2 | xargs -r rm -f
-
-      # 7️⃣ Subir PDFs y JSON al repositorio sin conflictos
-      - name: 🚀 Subir cambios al repositorio
+      # 7️⃣ Subir el nuevo PDF y eliminar los antiguos
+      - name: Subir PDF actualizado al repositorio
+        if: success() && exists('outputs/pvpc_*.pdf')
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "actions@github.com"
 
-          # Guardar cambios locales para evitar conflictos con pull
-          git stash push -u
+          # 🔹 Eliminar PDFs anteriores
+          git rm -f outputs/pvpc_*.pdf || echo "Sin PDFs antiguos"
 
-          # Traer cambios del remoto
-          git pull --rebase
+          # 🔹 Añadir el nuevo
+          git add outputs/*.pdf
 
-          # Recuperar archivos generados
-          git stash pop || true
+          # 🔹 Commit con fecha actual
+          git commit -m "📄 Informe diario PVPC $(date +'%Y-%m-%d')" || echo "Sin cambios"
 
-          # Añadir y commitear solo los archivos necesarios
-          git add outputs/pvpc_*.pdf outputs/pvpc.json
-          git commit -m "Actualización automática PVPC $(date +'%Y-%m-%d')" || echo "Sin cambios que confirmar."
+          # 🔹 Sincronizar con remoto
+          git pull --rebase origin main || echo "Sin rebase posible"
+          git push origin main || echo "Sin cambios que subir"
 
-          # Hacer push al remoto
-          git push
+      # 8️⃣ Limpieza final local (archivos temporales)
+      - name: Limpieza local
+        if: always()
+        run: |
+          rm -f outputs/pvpc.json || true
+          rm -f outputs/temp.png || true
+          echo "🧹 Archivos temporales eliminados"
