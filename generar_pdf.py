@@ -18,18 +18,17 @@ with open(json_file, "r", encoding="utf-8") as f:
     datos = json.load(f)
 
 df = pd.DataFrame(datos["PVPC"])
+fecha_json = datos.get("fecha_publicacion")
 
-# === Fecha para nombre de PDF tomada del JSON ===
-try:
-    # Asume que JSON tiene campo 'datetime' en formato ISO
-    primer_dt = datetime.fromisoformat(datos["PVPC"][0]["datetime"].replace('Z','+00:00'))
-except KeyError:
-    # Si no existe, se usa fecha actual
-    primer_dt = datetime.now()
-fecha_archivo = primer_dt.strftime("%Y%m%d")
+if not fecha_json:
+    print("⚠️ No se encontró 'fecha_publicacion' en el JSON. Se usará la fecha actual.")
+    fecha_json = datetime.now().strftime("%Y-%m-%d")
+
+fecha_dt = datetime.strptime(fecha_json, "%Y-%m-%d")
+fecha_archivo = fecha_dt.strftime("%Y%m%d")
 output_pdf = f"outputs/pvpc_{fecha_archivo}.pdf"
 
-# === Crear gráfico ligeramente más pequeño ===
+# === Crear gráfico ===
 fig, ax = plt.subplots(figsize=(10, 5))
 precios = df["precio"]
 horas = df["hora"]
@@ -37,12 +36,24 @@ horas = df["hora"]
 umbral_bajo = precios.quantile(0.33)
 umbral_alto = precios.quantile(0.66)
 
-horas = df["hora"].apply(lambda x: x.replace('-', ','))  # "01-00" → "01,00"
-ax.bar(horas, precios, color=['green' if p <= umbral_bajo else '#FFE135' if p <= umbral_alto else 'red' for p in precios])
-ax.axhline(precios.mean(), color="blue", linestyle="--", label=f"Precio medio: {precios.mean():.4f} €/kWh")
+# Colores: verde - dorado fuerte - rojo
+colores = [
+    colors.green if p <= umbral_bajo else
+    colors.Color(0.9, 0.7, 0.0) if p <= umbral_alto else
+    colors.red
+    for p in precios
+]
+
+ax.bar(
+    [h.replace("-", ",") for h in horas],
+    precios,
+    color=['green' if p <= umbral_bajo else '#E1A500' if p <= umbral_alto else 'red' for p in precios]
+)
+ax.axhline(precios.mean(), color="blue", linestyle="--",
+            label=f"Precio medio: {precios.mean():.4f} €/kWh")
 ax.set_xlabel("Hora")
 ax.set_ylabel("Precio (€/kWh)")
-ax.set_title("PVPC Diario")
+ax.set_title(f"PVPC Diario {fecha_dt.strftime('%d/%m/%Y')}")
 ax.legend()
 plt.xticks(rotation=45, ha='right')
 plt.tight_layout()
@@ -52,18 +63,17 @@ img_path = os.path.abspath("outputs/temp.png")
 plt.savefig(img_path, bbox_inches="tight")
 plt.close()
 
-# === Crear PDF vertical A4 ===
+# === Crear PDF ===
 c = canvas.Canvas(output_pdf, pagesize=A4)
 width, height = A4
 
 # Título
 c.setFont("Helvetica-Bold", 18)
-c.drawString(50, height - 50, "Informe Diario PVPC")
+c.drawString(50, height - 50, f"Informe Diario PVPC – {fecha_dt.strftime('%d/%m/%Y')}")
 
 # Estadísticas
 c.setFont("Helvetica", 12)
 texto = f"""
-Fecha: {primer_dt.strftime('%d/%m/%Y')}
 Precio máximo: {precios.max():.4f} €/kWh
 Precio mínimo: {precios.min():.4f} €/kWh
 Precio medio:  {precios.mean():.4f} €/kWh
@@ -73,21 +83,21 @@ for i, linea in enumerate(texto.strip().split("\n")):
 
 # Insertar gráfico
 img = ImageReader(img_path)
-c.drawImage(img, 50, height / 2 - 40, width=width - 100, preserveAspectRatio=True, mask="auto")
+c.drawImage(img, 50, height / 2 - 40, width=width - 100,
+            preserveAspectRatio=True, mask="auto")
 
-# Tabla de precios justo debajo del gráfico, distancia reducida a 1/3
+# Tabla de precios ajustada
 c.setFont("Helvetica-Bold", 12)
-c.drawString(50, height / 2 - 30, "Tabla de precios por hora:")
+c.drawString(50, height / 2 - 10, "Tabla de precios por hora:")
 
 c.setFont("Helvetica", 10)
-y = height / 2 - 50  # posición inicial ajustada más cerca del gráfico
+y = height / 2 - 30
 for _, row in df.iterrows():
-    line = f"{row['hora']}: {row['precio']:.4f} €/kWh"
-    # Colorear según precio
+    line = f"{row['hora'].replace('-', ',')}: {row['precio']:.4f} €/kWh"
     if row['precio'] <= umbral_bajo:
         c.setFillColor(colors.green)
     elif row['precio'] <= umbral_alto:
-        c.setFillColor(colors.Color(1, 0.65, 0))  # plátano
+        c.setFillColor(colors.Color(0.9, 0.7, 0.0))  # dorado fuerte
     else:
         c.setFillColor(colors.red)
     c.drawString(60, y, line)
