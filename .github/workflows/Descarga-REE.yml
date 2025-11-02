@@ -3,7 +3,7 @@ name: Generar informe PVPC diario
 on:
   schedule:
     # Ejecuta todos los días a las 21:50 hora local Madrid
-    - cron: "50 20 * * *"
+    - cron: "58 21 * * *"
   workflow_dispatch:
 
 permissions:
