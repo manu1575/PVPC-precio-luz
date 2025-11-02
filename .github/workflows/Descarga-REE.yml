@@ -2,17 +2,17 @@ name: Generar informe PVPC diario
 
 on:
   schedule:
-    # Ejecuta todos los días a las 21:50 hora local Madrid (20:50 UTC en invierno y 19:50 en verano)#
-    - cron: "24 21 * * *"
+    # Ejecuta todos los días a las 21:50 hora local Madrid
+    - cron: "50 20 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write  # Necesario para push de PDFs al repositorio
+  contents: write
 
 jobs:
   generar-informe:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
 
     steps:
       # 1️⃣ Clonar repositorio
@@ -31,8 +31,8 @@ jobs:
           pip install --upgrade pip
           pip install requests pandas matplotlib reportlab pytz
 
-      # 4️⃣ Descargar datos PVPC desde REE con reintentos
-      - name: 🕐 Descargar datos PVPC
+      # 4️⃣ Descargar datos PVPC con reintentos (huso Madrid)
+      - name: 🕐 Descargar JSON desde REE
         env:
           ESIOS_TOKEN: ${{ secrets.ESIOS_TOKEN }}
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
@@ -41,39 +41,124 @@ jobs:
           SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
         run: |
-          python descargar_json_ree.py
+          python <<EOF
+import requests, os, json, time
+from datetime import datetime, timedelta
+import pytz
 
-      # 5️⃣ Generar PDF diario
-      - name: 📊 Generar PDF diario
+TOKEN = os.environ['ESIOS_TOKEN']
+os.makedirs("outputs", exist_ok=True)
+
+tz = pytz.timezone("Europe/Madrid")
+max_intentos = 5
+sleep_minutos = 20
+exito = False
+
+for intento in range(1, max_intentos+1):
+    now_madrid = datetime.now(tz)
+    target_date = now_madrid.date() + timedelta(days=1)
+    start_date = f"{target_date}T00:00"
+    end_date = f"{target_date}T23:59"
+
+    url = "https://api.esios.ree.es/indicators/1001"
+    headers = {
+        "Accept": "application/json; application/vnd.esios-api-v2+json",
+        "Content-Type": "application/json",
+        "x-api-key": TOKEN
+    }
+    params = {"start_date": start_date, "end_date": end_date, "time_trunc": "hour"}
+
+    print(f"🔄 Intento {intento}/{max_intentos} para {target_date}")
+    try:
+        resp = requests.get(url, headers=headers, params=params, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        valores = data.get("indicator", {}).get("values", [])
+        fechas = [v['datetime'][:10] for v in valores]
+        if str(target_date) not in fechas:
+            raise ValueError("Datos aún no actualizados")
+        pvpc = [{"hora": v["datetime"][11:16].replace(":",","), "precio": v["value"]/1000} 
+                for v in valores if v.get("geo_id")==8741]
+        salida = {"fecha_publicacion": str(target_date), "PVPC": pvpc}
+        with open("outputs/pvpc.json","w", encoding="utf-8") as f:
+            json.dump(salida, f, ensure_ascii=False, indent=4)
+        exito = True
+        print(f"✅ JSON correcto generado: outputs/pvpc.json")
+        break
+    except Exception as e:
+        print(f"⚠️ Intento {intento} fallido: {e}")
+        if intento < max_intentos:
+            time.sleep(sleep_minutos*60)
+
+if not exito:
+    print("❌ No se pudo descargar el JSON correcto")
+    exit(1)
+EOF
+
+      # 5️⃣ Generar PDF solo si existe JSON correcto
+      - name: 📊 Generar PDF
         run: |
           python generar_pdf.py
 
-      # 6️⃣ Limpiar archivos antiguos de manera segura
+      # 6️⃣ Enviar email con PDF adjunto solo si existe PDF
+      - name: 📧 Enviar PDF por email
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        run: |
+          PDF_FILE=$(ls outputs/pvpc_*.pdf | sort | tail -n 1)
+          if [ -f "$PDF_FILE" ]; then
+            python <<EOF
+import os, smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
+EMAIL_USER = os.environ['EMAIL_USER']
+EMAIL_PASSWORD = os.environ['EMAIL_PASSWORD']
+EMAIL_RECEIVER = os.environ['EMAIL_RECEIVER'].split(',')
+SMTP_SERVER = os.environ.get('SMTP_SERVER','smtp.gmail.com')
+SMTP_PORT = int(os.environ.get('SMTP_PORT',587))
+PDF_FILE = "$PDF_FILE"
+
+msg = MIMEMultipart()
+msg['From'] = EMAIL_USER
+msg['To'] = ", ".join(EMAIL_RECEIVER)
+msg['Subject'] = f"Informe PVPC {os.path.basename(PDF_FILE)}"
+msg.attach(MIMEText("Adjunto el informe diario PVPC.", 'plain'))
+
+with open(PDF_FILE,"rb") as f:
+    part = MIMEBase('application','octet-stream')
+    part.set_payload(f.read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f'attachment; filename="{os.path.basename(PDF_FILE)}"')
+    msg.attach(part)
+
+with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+    server.starttls()
+    server.login(EMAIL_USER, EMAIL_PASSWORD)
+    server.sendmail(EMAIL_USER, EMAIL_RECEIVER, msg.as_string())
+print(f"✅ Email enviado con {PDF_FILE}")
+EOF
+          else
+            echo "⚠️ PDF no encontrado, no se enviará email."
+          fi
+
+      # 7️⃣ Limpiar PDFs y JSON antiguos
       - name: 🧹 Mantener solo archivos recientes
         run: |
-          # Mantener solo el último PDF
           ls -1t outputs/pvpc_*.pdf 2>/dev/null | tail -n +2 | xargs -r rm -f
-          # Mantener solo el último JSON
           ls -1t outputs/pvpc.json 2>/dev/null | tail -n +2 | xargs -r rm -f
 
-      # 7️⃣ Subir PDFs y JSON al repositorio sin conflictos
-      - name: 🚀 Subir cambios al repositorio
+      # 8️⃣ Subir archivos al repositorio
+      - name: 🚀 Subir PDFs y JSON
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Guardar cambios locales para evitar conflictos con pull
-          git stash push -u
-
-          # Traer cambios del remoto
-          git pull --rebase
-
-          # Recuperar archivos generados
-          git stash pop || true
-
-          # Añadir y commitear solo los archivos necesarios
-          git add outputs/pvpc_*.pdf outputs/pvpc.json
+          git add outputs/
           git commit -m "Actualización automática PVPC $(date +'%Y-%m-%d')" || echo "Sin cambios que confirmar."
-
-          # Hacer push al remoto
           git push
