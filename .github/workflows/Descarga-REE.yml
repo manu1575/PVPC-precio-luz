@@ -48,20 +48,32 @@ jobs:
         run: |
           python generar_pdf.py
 
-      # 6️⃣ Mantener solo archivos recientes
-      - name: 🧹 Eliminar PDFs y JSON antiguos
+      # 6️⃣ Limpiar archivos antiguos de manera segura
+      - name: 🧹 Mantener solo archivos recientes
         run: |
           # Mantener solo el último PDF
-          ls outputs | grep -E 'pvpc_.*\.pdf' | sort | head -n -1 | xargs -r rm -- && echo "🧹 PDFs antiguos eliminados."
+          ls -1t outputs/pvpc_*.pdf 2>/dev/null | tail -n +2 | xargs -r rm -f
           # Mantener solo el último JSON
-          ls outputs | grep -E 'pvpc_.*\.json' | sort | head -n -1 | xargs -r rm -- || true
+          ls -1t outputs/pvpc.json 2>/dev/null | tail -n +2 | xargs -r rm -f
 
-      # 7️⃣ Subir PDFs y JSON al repositorio
+      # 7️⃣ Subir PDFs y JSON al repositorio sin conflictos
       - name: 🚀 Subir cambios al repositorio
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Guardar cambios locales para evitar conflictos con pull
+          git stash push -u
+
+          # Traer cambios del remoto
           git pull --rebase
-          git add outputs/
+
+          # Recuperar archivos generados
+          git stash pop || true
+
+          # Añadir y commitear solo los archivos necesarios
+          git add outputs/pvpc_*.pdf outputs/pvpc.json
           git commit -m "Actualización automática PVPC $(date +'%Y-%m-%d')" || echo "Sin cambios que confirmar."
+
+          # Hacer push al remoto
           git push
