@@ -28,7 +28,7 @@ fecha_dt = datetime.strptime(fecha_json, "%Y-%m-%d")
 fecha_archivo = fecha_dt.strftime("%Y%m%d")
 output_pdf = f"outputs/pvpc_{fecha_archivo}.pdf"
 
-# === Crear gráfico ===
+# === Crear gráfico ligeramente más pequeño ===
 fig, ax = plt.subplots(figsize=(10, 5))
 precios = df["precio"]
 horas = df["hora"]
@@ -36,19 +36,19 @@ horas = df["hora"]
 umbral_bajo = precios.quantile(0.33)
 umbral_alto = precios.quantile(0.66)
 
-# Colores: verde - dorado fuerte - rojo
-colores = [
+# Colores para PDF y matplotlib
+colores_pdf = [
     colors.green if p <= umbral_bajo else
     colors.Color(0.9, 0.7, 0.0) if p <= umbral_alto else
     colors.red
     for p in precios
 ]
+colores_plot = ['green' if p <= umbral_bajo else '#E1A500' if p <= umbral_alto else 'red' for p in precios]
 
-ax.bar(
-    [h.replace("-", ",") for h in horas],
-    precios,
-    color=['green' if p <= umbral_bajo else '#E1A500' if p <= umbral_alto else 'red' for p in precios]
-)
+# Formato de horas: HH,MM
+horas_plot = [h.replace("-", ",") for h in horas]
+
+ax.bar(horas_plot, precios, color=colores_plot)
 ax.axhline(precios.mean(), color="blue", linestyle="--",
             label=f"Precio medio: {precios.mean():.4f} €/kWh")
 ax.set_xlabel("Hora")
@@ -63,7 +63,7 @@ img_path = os.path.abspath("outputs/temp.png")
 plt.savefig(img_path, bbox_inches="tight")
 plt.close()
 
-# === Crear PDF ===
+# === Crear PDF vertical A4 ===
 c = canvas.Canvas(output_pdf, pagesize=A4)
 width, height = A4
 
@@ -86,7 +86,7 @@ img = ImageReader(img_path)
 c.drawImage(img, 50, height / 2 - 40, width=width - 100,
             preserveAspectRatio=True, mask="auto")
 
-# Tabla de precios ajustada
+# Tabla de precios justo debajo del gráfico, distancia reducida
 c.setFont("Helvetica-Bold", 12)
 c.drawString(50, height / 2 - 10, "Tabla de precios por hora:")
 
