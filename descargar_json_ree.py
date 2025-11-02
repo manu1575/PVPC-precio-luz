@@ -5,7 +5,7 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
-import pandas as pd
+import pytz  # Para huso horario Madrid
 
 # === Variables de entorno ===
 TOKEN = os.environ.get('ESIOS_TOKEN')
@@ -41,10 +41,12 @@ def enviar_alerta(asunto, cuerpo):
         print(f"⚠️ No se pudo enviar la notificación: {e}")
 
 # === Configuración de fechas ===
-now = datetime.now()
-madrid_offset = timedelta(hours=1)  # horario de invierno (ajustable con zona)
-now_madrid = now + madrid_offset
-target_date = now_madrid.date() + timedelta(days=1)
+zona_madrid = pytz.timezone("Europe/Madrid")
+ahora = datetime.now(zona_madrid)
+# Día siguiente si ya son las 21:40 o más
+target_date = ahora.date()
+if ahora.hour > 21 or (ahora.hour == 21 and ahora.minute >= 40):
+    target_date += timedelta(days=1)
 
 start_date = f"{target_date}T00:00"
 end_date = f"{target_date}T23:59"
@@ -72,11 +74,12 @@ params = {
     "time_trunc": "hour"
 }
 
-max_intentos = 5
+MAX_INTENTOS = 5
+ESPERA_SEGUNDOS = 20 * 60  # 20 minutos
 exito = False
 
-for intento in range(1, max_intentos + 1):
-    print(f"🔄 Intento {intento}/{max_intentos} para descargar datos de {target_date}")
+for intento in range(1, MAX_INTENTOS + 1):
+    print(f"🔄 Intento {intento}/{MAX_INTENTOS} para descargar datos de {target_date}")
     try:
         resp = requests.get(url, headers=headers, params=params, timeout=30)
         resp.raise_for_status()
@@ -87,18 +90,19 @@ for intento in range(1, max_intentos + 1):
             raise ValueError("Datos vacíos o incompletos")
 
         # Confirmar que los datos son del target_date
-        fechas = [datetime.fromisoformat(v["datetime"].replace("Z", "+00:00")).strftime("%Y-%m-%d") for v in valores]
-        if str(target_date) not in fechas:
-            print(f"⚠️ Datos aún no actualizados ({intento}/{max_intentos})")
-            if intento < max_intentos:
-                time.sleep(1200)  # 20 minutos
+        fechas = [datetime.fromisoformat(v["datetime"].replace("Z", "+00:00")).astimezone(zona_madrid).date()
+                  for v in valores]
+        if target_date not in fechas:
+            print(f"⚠️ Datos aún no actualizados ({intento}/{MAX_INTENTOS})")
+            if intento < MAX_INTENTOS:
+                time.sleep(ESPERA_SEGUNDOS)
             continue
 
         # Procesar datos PVPC Península
         pvpc = []
         for v in valores:
             if v.get("geo_id") == 8741:
-                dt = datetime.fromisoformat(v["datetime"].replace("Z", "+00:00"))
+                dt = datetime.fromisoformat(v["datetime"].replace("Z", "+00:00")).astimezone(zona_madrid)
                 hora = dt.strftime("%H,%M")
                 precio = v["value"] / 1000
                 pvpc.append({"hora": hora, "precio": precio})
@@ -119,14 +123,13 @@ for intento in range(1, max_intentos + 1):
 
     except Exception as e:
         print(f"❌ Error en intento {intento}: {e}")
-        if intento < max_intentos:
-            time.sleep(1200)
+        if intento < MAX_INTENTOS:
+            time.sleep(ESPERA_SEGUNDOS)
 
 if not exito:
     mensaje = (
         f"No se han podido obtener los datos PVPC del día {target_date.strftime('%d/%m/%Y')} "
-        f"tras {max_intentos} intentos. Es posible que REE no haya publicado aún la información."
+        f"tras {MAX_INTENTOS} intentos. Es posible que REE no haya publicado aún la información."
     )
     enviar_alerta("⚠️ Error en descarga de datos PVPC", mensaje)
     exit(1)
-
