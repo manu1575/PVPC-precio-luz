@@ -92,7 +92,7 @@ for _, row in df.iterrows():
     if row['precio'] <= umbral_bajo:
         c.setFillColor(colors.green)
     elif row['precio'] <= umbral_alto:
-        c.setFillColor(colors.Color(0.85, 0.65, 0.0))  # dorado más oscuro
+        c.setFillColor(colors.Color(1, 0.65, 0.0))  # dorado más oscuro
     else:
         c.setFillColor(colors.red)
     c.drawString(60, y, line)
