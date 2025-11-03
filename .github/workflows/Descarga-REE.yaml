@@ -1,0 +1,73 @@
+name: Informe Diario PVPC
+
+on:
+  schedule:
+    # Ejecuta todos los días a las 21:50 hora local Madrid (20:50 UTC en invierno) #
+    - cron: "26 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pvpc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      # 1️⃣ Clonar repositorio
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2️⃣ Configurar Python
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 3️⃣ Instalar dependencias
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas matplotlib requests reportlab pytz
+
+      # 4️⃣ Descargar JSON desde ESIOS con reintentos
+      - name: Descargar JSON desde ESIOS
+        env:
+          ESIOS_TOKEN: ${{ secrets.ESIOS_TOKEN }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        run: python descargar_json_ree.py
+
+      # 5️⃣ Generar PDF solo si JSON correcto
+      - name: Generar PDF
+        run: python generar_pdf.py
+
+      # 6️⃣ Enviar PDF por correo solo si existe PDF correcto
+      - name: Enviar PDF por correo
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        run: python enviar_email.py
+
+      # 7️⃣ Mantener solo archivos recientes
+      - name: Limpiar PDFs y JSON antiguos
+        run: |
+          ls -1t outputs/pvpc_*.pdf 2>/dev/null | tail -n +2 | xargs -r rm -f
+          ls -1t outputs/pvpc.json 2>/dev/null | tail -n +2 | xargs -r rm -f
+
+      # 8️⃣ Subir PDFs y JSON al repositorio
+      - name: Subir PDFs y JSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add outputs/
+          git commit -m "Actualización automática PVPC $(date +'%Y-%m-%d')" || echo "Sin cambios que confirmar."
+          git push
