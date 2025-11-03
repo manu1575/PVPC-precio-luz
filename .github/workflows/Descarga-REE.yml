@@ -2,7 +2,7 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    - cron: "50 20 * * *"
+    - cron: "08 21 * * *"
   workflow_dispatch:
 
 permissions:
