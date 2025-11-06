@@ -2,8 +2,8 @@ name: Informe Diario PVPC
 
 on:
   schedule:
-    # Ejecuta todos los días a las 21:50 hora local Madrid (20:50 UTC en invierno) #
-    - cron: "55 20 * * *"
+    # Ejecuta todos los días a las 21:50 hora local Madrid (20:50 UTC en invierno)
+    - cron: "50 20 * * *"
   workflow_dispatch:
 
 permissions:
@@ -32,7 +32,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas matplotlib requests reportlab pytz
 
-      # 4️⃣ Descargar JSON desde ESIOS con reintentos
+      # 4️⃣ Descargar JSON desde ESIOS (con reintento manual)
       - name: Descargar JSON desde ESIOS
         env:
           ESIOS_TOKEN: ${{ secrets.ESIOS_TOKEN }}
@@ -41,14 +41,32 @@ jobs:
           EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
           SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
-        run: python descargar_json_ree.py
+        run: |
+          max_retries=3
+          delay_seconds=900  # 15 minutos entre intentos
+          for ((i=1; i<=max_retries; i++)); do
+            echo "🔄 Intento $i de $max_retries para ejecutar descargar_json_ree.py"
+            if python descargar_json_ree.py; then
+              echo "✅ Descarga completada con éxito."
+              break
+            else
+              echo "⚠️ Fallo en intento $i. Reintentando en $delay_seconds segundos..."
+              sleep $delay_seconds
+            fi
+            if [ $i -eq $max_retries ]; then
+              echo "❌ Se agotaron los intentos. Abortando flujo."
+              exit 1
+            fi
+          done
 
-      # 5️⃣ Generar PDF solo si JSON correcto
+      # 5️⃣ Generar PDF solo si el JSON se descargó correctamente
       - name: Generar PDF
+        if: success()
         run: python generar_pdf.py
 
-      # 6️⃣ Enviar PDF por correo solo si existe PDF correcto
+      # 6️⃣ Enviar PDF por correo solo si se generó correctamente
       - name: Enviar PDF por correo
+        if: success()
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
@@ -57,13 +75,13 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
         run: python enviar_email.py
 
-      # 7️⃣ Mantener solo archivos recientes
+      # 7️⃣ Mantener solo el último PDF y JSON
       - name: Limpiar PDFs y JSON antiguos
         run: |
           ls -1t outputs/pvpc_*.pdf 2>/dev/null | tail -n +2 | xargs -r rm -f
           ls -1t outputs/pvpc.json 2>/dev/null | tail -n +2 | xargs -r rm -f
 
-      # 8️⃣ Subir PDFs y JSON al repositorio
+      # 8️⃣ Subir PDFs y JSON actualizados al repositorio
       - name: Subir PDFs y JSON
         run: |
           git config user.name "github-actions[bot]"
