@@ -15,6 +15,7 @@ SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
 
 JSON_PATH = "outputs/pvpc.json"
 
+# === Verificación inicial de credenciales ===
 if not EMAIL_USER or not EMAIL_PASSWORD or not EMAIL_RECEIVER:
     print("⚠️ Notificación desactivada: faltan credenciales de correo.")
     exit(0)
@@ -44,11 +45,14 @@ destinatarios = [x.strip() for x in EMAIL_RECEIVER.split(",") if x.strip()]
 
 msg = MIMEMultipart()
 msg["From"] = EMAIL_USER
-msg["To"] = ", ".join(destinatarios)
+msg["To"] = "Destinatario oculto"  # No mostrar lista real
+msg["Bcc"] = ", ".join(destinatarios)  # Envío en copia oculta
 msg["Subject"] = f"Informe PVPC diario – {fecha_dt.strftime('%d/%m/%Y')}"
+
 body = f"Adjunto se envía el informe diario de PVPC correspondiente al {fecha_dt.strftime('%d/%m/%Y')}."
 msg.attach(MIMEText(body, "plain"))
 
+# Adjuntar PDF
 with open(pdf_filename, "rb") as f:
     part = MIMEApplication(f.read(), Name=os.path.basename(pdf_filename))
 part['Content-Disposition'] = f'attachment; filename="{os.path.basename(pdf_filename)}"'
@@ -60,7 +64,8 @@ try:
         server.starttls()
         server.login(EMAIL_USER, EMAIL_PASSWORD)
         server.sendmail(EMAIL_USER, destinatarios, msg.as_string())
-    print(f"📧 Correo enviado correctamente a: {', '.join(destinatarios)}")
+    print(f"📧 Correo enviado correctamente a {len(destinatarios)} destinatario(s) en copia oculta.")
 except Exception as e:
     print(f"❌ Error al enviar correo: {e}")
     exit(1)
+
