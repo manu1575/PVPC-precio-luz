@@ -61,6 +61,10 @@ if os.path.exists(pdf_path):
     print(f"✅ PDF para {fecha_archivo} ya generado en ejecución anterior. Saliendo.")
     exit(0)
 
+# === Pausa inicial para asegurar entorno listo ===
+print("⏳ Esperando 30 segundos antes de iniciar la descarga...")
+time.sleep(30)
+
 # === Descarga con reintentos ===
 url = "https://api.esios.ree.es/indicators/1001"
 headers = {
@@ -114,10 +118,16 @@ for intento in range(1, MAX_INTENTOS + 1):
             "fecha_publicacion": str(target_date),
             "PVPC": pvpc
         }
+
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(salida, f, ensure_ascii=False, indent=4)
 
-        print(f"✅ JSON generado: {json_path} ({len(pvpc)} horas)")
+        # Validar tamaño del archivo
+        if os.path.exists(json_path) and os.path.getsize(json_path) > 500:
+            print(f"✅ JSON generado correctamente: {json_path} ({os.path.getsize(json_path)} bytes)")
+        else:
+            raise ValueError("⚠️ El archivo JSON se creó pero parece estar vacío o incompleto.")
+
         exito = True
         break
 
@@ -126,10 +136,16 @@ for intento in range(1, MAX_INTENTOS + 1):
         if intento < MAX_INTENTOS:
             time.sleep(ESPERA_SEGUNDOS)
 
-if not exito:
+# === Verificación final antes de terminar ===
+if not exito or not os.path.exists(json_path):
     mensaje = (
         f"No se han podido obtener los datos PVPC del día {target_date.strftime('%d/%m/%Y')} "
         f"tras {MAX_INTENTOS} intentos. Es posible que REE no haya publicado aún la información."
     )
     enviar_alerta("⚠️ Error en descarga de datos PVPC", mensaje)
+    print("❌ Proceso detenido: no se generó el JSON esperado.")
     exit(1)
+
+# Espera adicional para asegurar sincronización de escritura en disco
+time.sleep(5)
+print("🕒 Espera final de sincronización completada. JSON disponible y verificado.")
