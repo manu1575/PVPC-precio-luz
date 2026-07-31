@@ -1,101 +1,101 @@
 {
-    "fecha_publicacion": "2026-07-31",
+    "fecha_publicacion": "2026-08-01",
     "PVPC": [
         {
             "hora": "00,00",
-            "precio": 0.18628
+            "precio": 0.20118
         },
         {
             "hora": "01,00",
-            "precio": 0.18463
+            "precio": 0.18938
         },
         {
             "hora": "02,00",
-            "precio": 0.18027
+            "precio": 0.18224
         },
         {
             "hora": "03,00",
-            "precio": 0.17762
+            "precio": 0.18442
         },
         {
             "hora": "04,00",
-            "precio": 0.1772
+            "precio": 0.19661
         },
         {
             "hora": "05,00",
-            "precio": 0.17623
+            "precio": 0.19673
         },
         {
             "hora": "06,00",
-            "precio": 0.18837
+            "precio": 0.20553
         },
         {
             "hora": "07,00",
-            "precio": 0.19906000000000001
+            "precio": 0.21242
         },
         {
             "hora": "08,00",
-            "precio": 0.21226
+            "precio": 0.1971
         },
         {
             "hora": "09,00",
-            "precio": 0.17784
+            "precio": 0.12203
         },
         {
             "hora": "10,00",
-            "precio": 0.21537
+            "precio": 0.03892
         },
         {
             "hora": "11,00",
-            "precio": 0.19449
+            "precio": 0.00819
         },
         {
             "hora": "12,00",
-            "precio": 0.18847
+            "precio": 0.00657
         },
         {
             "hora": "13,00",
-            "precio": 0.1859
+            "precio": 0.00544
         },
         {
             "hora": "14,00",
-            "precio": 0.11348
+            "precio": 0.00505
         },
         {
             "hora": "15,00",
-            "precio": 0.09933
+            "precio": 0.00483
         },
         {
             "hora": "16,00",
-            "precio": 0.10940000000000001
+            "precio": 0.00538
         },
         {
             "hora": "17,00",
-            "precio": 0.12147
+            "precio": 0.03904
         },
         {
             "hora": "18,00",
-            "precio": 0.21587
+            "precio": 0.12073
         },
         {
             "hora": "19,00",
-            "precio": 0.26455
+            "precio": 0.18661000000000003
         },
         {
             "hora": "20,00",
-            "precio": 0.28663
+            "precio": 0.22651
         },
         {
             "hora": "21,00",
-            "precio": 0.29702
+            "precio": 0.2398
         },
         {
             "hora": "22,00",
-            "precio": 0.22869
+            "precio": 0.23631
         },
         {
             "hora": "23,00",
-            "precio": 0.22061
+            "precio": 0.22898
         }
     ]
 }
