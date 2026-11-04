@@ -146,6 +146,10 @@ if not exito or not os.path.exists(json_path):
     print("❌ Proceso detenido: no se generó el JSON esperado.")
     exit(1)
 
+import hashlib
+
+print("Huella SHA-256 del token de GitHub:",
+      hashlib.sha256(TOKEN.encode()).hexdigest())
 # Espera adicional para asegurar sincronización de escritura en disco
 time.sleep(5)
 print("🕒 Espera final de sincronización completada. JSON disponible y verificado.")
