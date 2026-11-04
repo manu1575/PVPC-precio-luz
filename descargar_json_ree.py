@@ -9,6 +9,17 @@ import pytz  # Para huso horario Madrid
 
 # === Variables de entorno ===
 TOKEN = os.environ.get('ESIOS_TOKEN')
+
+import hashlib
+
+print("Token detectado:", bool(TOKEN))
+print("Longitud del token:", len(TOKEN) if TOKEN else 0)
+print(
+    "Huella SHA-256:",
+    hashlib.sha256(TOKEN.encode()).hexdigest() if TOKEN else "SIN TOKEN"
+)
+
+
 EMAIL_USER = os.environ.get('EMAIL_USER')
 EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
 EMAIL_RECEIVER = os.environ.get('EMAIL_RECEIVER', '')
@@ -145,11 +156,3 @@ if not exito or not os.path.exists(json_path):
     enviar_alerta("⚠️ Error en descarga de datos PVPC", mensaje)
     print("❌ Proceso detenido: no se generó el JSON esperado.")
     exit(1)
-
-import hashlib
-
-print("Huella SHA-256 del token de GitHub:",
-      hashlib.sha256(TOKEN.encode()).hexdigest())
-# Espera adicional para asegurar sincronización de escritura en disco
-time.sleep(5)
-print("🕒 Espera final de sincronización completada. JSON disponible y verificado.")
