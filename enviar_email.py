@@ -1,83 +1,94 @@
 import os
+import json
 import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
-from email import encoders
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 from datetime import datetime
-import glob
 
-EMAIL_USER = os.environ.get('EMAIL_USER')
-EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
-EMAIL_RECEIVER = os.environ.get('EMAIL_RECEIVER')
-SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
-SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
+# === 🔐 Variables de entorno (desde GitHub Secrets) ===
+EMAIL_USER = os.environ.get("EMAIL_USER")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER", "")
+SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 
-if not all([EMAIL_USER, EMAIL_PASSWORD, EMAIL_RECEIVER]):
-    print("❌ Faltan variables de entorno")
+JSON_PATH = "outputs/pvpc.json"
+
+# === 🧩 Verificación de credenciales ===
+if not EMAIL_USER or not EMAIL_PASSWORD or not EMAIL_RECEIVER:
+    print("⚠️ Envío de correo desactivado: faltan credenciales de correo.")
+    exit(0)
+
+if not os.path.exists(JSON_PATH):
+    print(f"❌ No se encontró el archivo {JSON_PATH}. No se enviará ningún correo.")
     exit(1)
 
-print(f"📧 Configuración: Usuario {EMAIL_USER}, Destinatario {EMAIL_RECEIVER}")
+# === 📅 Leer JSON para determinar la fecha del informe ===
+with open(JSON_PATH, "r", encoding="utf-8") as f:
+    datos = json.load(f)
 
-pdf_files = sorted(glob.glob("outputs/pvpc_*.pdf"), key=os.path.getmtime, reverse=True)
-if not pdf_files:
-    print("❌ No PDFs en outputs/")
+fecha_publicacion = datos.get("fecha_publicacion")
+if not fecha_publicacion:
+    print("⚠️ No se encontró 'fecha_publicacion' en el JSON. No se enviará el correo.")
     exit(1)
 
-pdf_file = pdf_files[0]
-pdf_filename = os.path.basename(pdf_file)
-pdf_size = os.path.getsize(pdf_file)
-print(f"📎 PDF: {pdf_file} ({pdf_size/1024:.1f} KB)")
+fecha_dt = datetime.strptime(fecha_publicacion, "%Y-%m-%d")
+pdf_filename = f"outputs/pvpc_{fecha_dt.strftime('%Y%m%d')}.pdf"
 
-# Extraer fecha
-try:
-    fecha_str = pdf_filename.split('_')[1].split('.')[0]
-    fecha = f"{fecha_str[0:4]}-{fecha_str[4:6]}-{fecha_str[6:8]}"
-except:
-    fecha = datetime.now().strftime('%Y-%m-%d')
-
-msg = MIMEMultipart()
-msg['From'] = EMAIL_USER
-msg['To'] = EMAIL_RECEIVER
-msg['Subject'] = f"⚡ Informe PVPC - {fecha}"
-
-cuerpo = f"""
-Hola,
-
-Adjunto informe PVPC para {fecha}.
-
-Incluye gráficos, estadísticas y tabla.
-
-Datos de REE.
-
----
-Automático via GitHub Actions. Envío: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-"""
-msg.attach(MIMEText(cuerpo, 'plain', 'utf-8'))
-
-try:
-    with open(pdf_file, "rb") as f:
-        part = MIMEBase('application', 'pdf')
-        part.set_payload(f.read())
-        encoders.encode_base64(part)
-        part.add_header('Content-Disposition', f'attachment; filename={pdf_filename}')
-        msg.attach(part)
-    print("✅ PDF adjuntado")
-except Exception as e:
-    print(f"❌ Error adjunto: {e}")
+if not os.path.exists(pdf_filename):
+    print(f"❌ No se encontró el archivo PDF {pdf_filename}. No se enviará el correo.")
     exit(1)
 
-print("📤 Enviando...")
-try:
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:  # Optimización: contexto
-        server.set_debuglevel(1 if os.environ.get('DEBUG') else 0)  # Depuración condicional
-        server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASSWORD)
-        server.sendmail(EMAIL_USER, EMAIL_RECEIVER, msg.as_string())
-    print(f"✅ Enviado a {EMAIL_RECEIVER}")
-except smtplib.SMTPAuthenticationError:
-    print("❌ Autenticación fallida. Verifica credenciales/Gmail app password.")
+# === 📧 Preparar cuerpo y adjunto del mensaje ===
+destinatarios = [x.strip() for x in EMAIL_RECEIVER.split(",") if x.strip()]
+if not destinatarios:
+    print("⚠️ No se encontraron destinatarios válidos en EMAIL_RECEIVER.")
+    exit(0)
+
+body = (
+    f"Estimado/a destinatario/a,\n\n"
+    f"Adjunto se envía el informe diario del PVPC correspondiente al día "
+    f"{fecha_dt.strftime('%d/%m/%Y')}.\n\n"
+    "Este mensaje ha sido enviado automáticamente por el sistema de informes diarios de precios eléctricos.\n\n"
+    "Atentamente,\n"
+    "Sistema Automatizado de Informes PVPC"
+)
+
+# === 📤 Envío individual a cada destinatario ===
+enviados = 0
+fallidos = 0
+
+for destinatario in destinatarios:
+    msg = MIMEMultipart()
+    msg["From"] = EMAIL_USER
+    msg["To"] = destinatario
+    msg["Subject"] = f"Informe diario PVPC – {fecha_dt.strftime('%d/%m/%Y')}"
+    msg.attach(MIMEText(body, "plain"))
+
+    # Adjuntar PDF
+    with open(pdf_filename, "rb") as f:
+        part = MIMEApplication(f.read(), Name=os.path.basename(pdf_filename))
+    part["Content-Disposition"] = f'attachment; filename="{os.path.basename(pdf_filename)}"'
+    msg.attach(part)
+
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_USER, EMAIL_PASSWORD)
+            server.sendmail(EMAIL_USER, destinatario, msg.as_string())
+        print(f"✅ Correo enviado correctamente a: {destinatario}")
+        enviados += 1
+    except Exception as e:
+        print(f"❌ Error al enviar correo a {destinatario}: {e}")
+        fallidos += 1
+
+# === 📊 Resumen del proceso ===
+print(f"\n📬 Resumen del envío:")
+print(f"   ✅ Correos enviados correctamente: {enviados}")
+print(f"   ❌ Fallos en el envío: {fallidos}")
+
+if enviados == 0:
     exit(1)
-except Exception as e:
-    print(f"❌ Error: {str(e)}")
-    exit(1)
+else:
+    print("🎯 Proceso de envío completado correctamente.")
