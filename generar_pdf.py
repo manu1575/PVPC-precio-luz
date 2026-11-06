@@ -35,21 +35,25 @@ output_pdf = f"outputs/pvpc_{fecha_archivo}.pdf"
 
 # Procesar precios y horas
 precios = df["precio"]
-horas_raw = df["hora"]
 
-horas = [h.replace("-", "").replace(":00", "").zfill(2) for h in horas_raw]
+# Normalización de horas para las 24 franjas (00 a 23)
+horas_simples = [f"{i:02d}" for i in range(24)]
 
 precio_medio = precios.mean()
 precio_max = precios.max()
 precio_min = precios.min()
 
-# === Umbrales Dinámicos Diarios (Basados en datos de REE) ===
+# Umbrales dinámicos diarios
 umbral_bajo = precios.quantile(0.33)
 umbral_alto = precios.quantile(0.66)
 
 # === 3. Generación del gráfico con Matplotlib ===
-plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
 fig, ax = plt.subplots(figsize=(10, 4.5), dpi=300)
+
+# Punto 5: Eliminar rejilla vertical y suavizar líneas horizontales
+ax.grid(True, axis='y', color='#e2e8f0', linestyle='-', linewidth=0.8, alpha=0.7)
+ax.grid(False, axis='x')
+ax.set_axisbelow(True)
 
 colores_barras = []
 for p in precios:
@@ -60,11 +64,13 @@ for p in precios:
     else:
         colores_barras.append('#ef4444') # Rojo (Alto)
 
-ax.bar(horas, precios, color=colores_barras, edgecolor='none', width=0.65)
+# Dibujar barras
+ax.bar(horas_simples, precios, color=colores_barras, edgecolor='none', width=0.65)
 
-# Línea horizontal del precio medio
+# Línea horizontal del precio medio (formateado con coma)
+str_media_grafico = f"{precio_medio:.3f}".replace(".", ",")
 ax.axhline(precio_medio, color='#1e293b', linestyle='--', linewidth=1.5, 
-           label=f'Precio Medio: {precio_medio:.3f} €/kWh')
+           label=f'Media ({str_media_grafico} €/kWh)')
 
 ax.set_title('Evolución Horaria de Precios PVPC', fontsize=13, fontweight='bold', pad=12, color='#1e293b')
 ax.set_xlabel('Hora del Día', fontsize=11, fontweight='bold', labelpad=8, color='#1e293b')
@@ -73,24 +79,27 @@ ax.set_xlabel('Hora del Día', fontsize=11, fontweight='bold', labelpad=8, color
 ax.set_ylabel('Precio (€/kWh)', fontsize=10, fontweight='bold', labelpad=8, color='#1e293b')
 ax.yaxis.set_label_coords(-0.06, 1.05)
 
-# Tamaño de fuente aumentado en las horas del eje X
-ax.set_xticks(range(len(horas)))
-ax.set_xticklabels(horas, fontsize=10, fontweight='bold')
+# Punto 2: Eje X limpio (horas de 00 a 23)
+ax.set_xticks(range(24))
+ax.set_xticklabels(horas_simples, fontsize=10, fontweight='bold')
 ax.tick_params(axis='y', labelsize=8)
 ax.set_ylim(0, max(precios) * 1.15)
 
-# Leyenda limpia de etiquetas únicamente (Sin rangos numéricos fijos)
+# Fondo blanco puro
+ax.set_facecolor('white')
+fig.patch.set_facecolor('white')
+
 legend_elements = [
     Patch(facecolor='#22c55e', label='Bajo'),
     Patch(facecolor='#eab308', label='Medio'),
     Patch(facecolor='#ef4444', label='Alto'),
-    plt.Line2D([0], [0], color='#1e293b', linestyle='--', linewidth=1.5, label=f'Media ({precio_medio:.3f} €/kWh)')
+    plt.Line2D([0], [0], color='#1e293b', linestyle='--', linewidth=1.5, label=f'Media ({str_media_grafico} €/kWh)')
 ]
 ax.legend(handles=legend_elements, frameon=True, facecolor='white', edgecolor='none', fontsize=8, loc='upper left')
 
 plt.tight_layout()
 chart_path = os.path.abspath("outputs/temp_chart.png")
-plt.savefig(chart_path, dpi=300)
+plt.savefig(chart_path, dpi=300, facecolor='white')
 plt.close()
 
 # === 4. Construcción del PDF con ReportLab ===
@@ -113,24 +122,35 @@ heading_style = ParagraphStyle(
     parent=styles['Heading2'], 
     fontSize=12, 
     textColor=colors.HexColor('#0f172a'), 
-    spaceBefore=28, 
+    spaceBefore=24, 
     spaceAfter=10
 )
 
-# Título de una sola línea
+# Estilo para celdas centradas (Puntos 1 y 3)
+cell_center_style = ParagraphStyle(
+    'CellCenter',
+    parent=styles['Normal'],
+    alignment=1
+)
+
+# Cabecera
 story.append(Paragraph(f"<b>Informe Diario de Precios PVPC con fecha {fecha_formateada}</b>", title_style))
 
-# Tarjetas KPI redondeadas a 3 decimales
+# Punto 1: Tarjetas KPI centradas con 3 decimales y comas
+str_min = f"{precio_min:.3f}".replace(".", ",")
+str_med = f"{precio_medio:.3f}".replace(".", ",")
+str_max = f"{precio_max:.3f}".replace(".", ",")
+
 summary_data = [
     [
-        Paragraph("<b>Precio Mínimo</b>", styles['Normal']),
-        Paragraph("<b>Precio Medio</b>", styles['Normal']),
-        Paragraph("<b>Precio Máximo</b>", styles['Normal'])
+        Paragraph("<b>Precio Mínimo</b>", cell_center_style),
+        Paragraph("<b>Precio Medio</b>", cell_center_style),
+        Paragraph("<b>Precio Máximo</b>", cell_center_style)
     ],
     [
-        Paragraph(f"<font size=12 color='#16a34a'><b>{precio_min:.3f} €/kWh</b></font>", styles['Normal']),
-        Paragraph(f"<font size=12 color='#ca8a04'><b>{precio_medio:.3f} €/kWh</b></font>", styles['Normal']),
-        Paragraph(f"<font size=12 color='#dc2626'><b>{precio_max:.3f} €/kWh</b></font>", styles['Normal'])
+        Paragraph(f"<font size=12 color='#16a34a'><b>{str_min} €/kWh</b></font>", cell_center_style),
+        Paragraph(f"<font size=12 color='#ca8a04'><b>{str_med} €/kWh</b></font>", cell_center_style),
+        Paragraph(f"<font size=12 color='#dc2626'><b>{str_max} €/kWh</b></font>", cell_center_style)
     ]
 ]
 summary_table = Table(summary_data, colWidths=[170, 170, 170])
@@ -152,11 +172,16 @@ story.append(Image(chart_path, width=510, height=230))
 # Desglose Horario
 story.append(Paragraph("<b>Desglose Horario Detallado</b>", heading_style))
 
-table_data = [["Hora", "Precio (€/kWh)", "Hora", "Precio (€/kWh)"]]
+# Puntos 3 y 4: Precios centrados, 3 decimales y sustitución de "." por ","
+table_data = [[
+    Paragraph("<b>Hora</b>", cell_center_style),
+    Paragraph("<b>Precio (€/kWh)</b>", cell_center_style),
+    Paragraph("<b>Hora</b>", cell_center_style),
+    Paragraph("<b>Precio (€/kWh)</b>", cell_center_style)
+]]
 
-# Función de formato con colores según los cuantiles del día
-def format_price(val):
-    val_str = f"{val:.4f} €/kWh"
+def format_price_text(val):
+    val_str = f"{val:.3f}".replace(".", ",") + " €/kWh"
     if val <= umbral_bajo:
         return f"<font color='#16a34a'><b>{val_str}</b></font>"
     elif val <= umbral_alto:
@@ -166,10 +191,10 @@ def format_price(val):
 
 for i in range(12):
     row = [
-        f"{horas[i]}:00",
-        Paragraph(format_price(precios[i]), styles['Normal']),
-        f"{horas[i+12]}:00",
-        Paragraph(format_price(precios[i+12]), styles['Normal'])
+        Paragraph(f"{i:02d}", cell_center_style),
+        Paragraph(format_price_text(precios[i]), cell_center_style),
+        Paragraph(f"{i+12:02d}", cell_center_style),
+        Paragraph(format_price_text(precios[i+12]), cell_center_style)
     ]
     table_data.append(row)
 
@@ -191,7 +216,7 @@ story.append(hourly_table)
 # Compilar PDF
 doc.build(story)
 
-# Limpieza
+# Limpieza del gráfico temporal
 try:
     os.remove(chart_path)
 except Exception as e:
